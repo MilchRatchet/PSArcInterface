@@ -1,15 +1,24 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
+
+#include "types.hpp"
 
 namespace PSArc {
 
 class ArchiveInterface {
 public:
-  virtual bool upsync()   = 0;
-  virtual bool downsync() = 0;
-}
+  virtual bool Upsync()   = 0;
+  virtual bool Downsync() = 0;
+};
+
+class FileSourceProvider {
+public:
+  virtual std::vector<byte> GetBytes()         = 0;
+  virtual CompressionType GetCompressionType() = 0;
+};
 
 class File {
 private:
@@ -17,18 +26,20 @@ private:
   std::vector<byte> compressedBytes;
   CompressionType compressionType;
   std::string fullPath;
+  std::optional<FileSourceProvider&> source;
 
 public:
   File(std::string, std::vector<byte>);
+  File(std::string, FileSourceProvider&);
   std::string name;
-}
+};
 
 class Directory {
 public:
   std::string name;
   std::vector<Directory> subDirectories;
   std::vector<File> files;
-}
+};
 
 class Archive {
 private:
@@ -41,5 +52,5 @@ public:
   bool AddFile(File);
   File FindFile(std::string) const;
   Directory FindDirectory(std::string) const;
-}
+};
 }  // namespace PSArc

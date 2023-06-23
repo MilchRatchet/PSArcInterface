@@ -10,13 +10,15 @@
 
 namespace PSArc {
 
+class PSArcFile : public FileSourceProvider {};
+
 /*
  * Interface of a virtual archive to a psarc file.
  */
 class PSArcHandle : public ArchiveInterface {
 private:
   bool hasEndpoint;
-  std::optional<Archive&> archive;
+  std::optional<Archive&> archiveEndpoint;
   std::optional<InputMemoryHandle&> parsingEndpoint;
   std::optional<OutputMemoryHandle&> serializationEndpoint;
 
@@ -24,7 +26,9 @@ public:
   PSArcHandle();
   void SetParsingEndpoint(std::optional<InputMemoryHandle&>);
   void SetSerializationEndpoint(std::optional<OutputMemoryHandle&>);
-  void SetSourceArchive(std::optional<OutputMemoryHandle&>);
-}
+  void SetArchive(std::optional<Archive&>);
+  bool Upsync() override;
+  bool Downsync() override;
+};
 
 }  // namespace PSArc
