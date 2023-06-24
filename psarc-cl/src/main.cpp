@@ -9,8 +9,8 @@ int main(int argc, char* argv[]) {
   PSArc::FileHandle file((std::string(argv[1])));
   PSArc::Archive archive;
 
-  handle.SetParsingEndpoint(std::optional<PSArc::FileHandle&>(file));
-  handle.SetArchive(std::optional<PSArc::Archive&>(archive));
+  handle.SetParsingEndpoint(&file);
+  handle.SetArchive(&archive);
   handle.Upsync();
 
   return 0;

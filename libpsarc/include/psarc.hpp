@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -10,25 +9,34 @@
 
 namespace PSArc {
 
-class PSArcFile : public FileSourceProvider {};
-
 /*
  * Interface of a virtual archive to a psarc file.
  */
 class PSArcHandle : public ArchiveInterface {
 private:
   bool hasEndpoint;
-  std::optional<Archive&> archiveEndpoint;
-  std::optional<InputMemoryHandle&> parsingEndpoint;
-  std::optional<OutputMemoryHandle&> serializationEndpoint;
+  Archive* archiveEndpoint;
+  InputMemoryHandle* parsingEndpoint;
+  OutputMemoryHandle* serializationEndpoint;
 
 public:
   PSArcHandle();
-  void SetParsingEndpoint(std::optional<InputMemoryHandle&>);
-  void SetSerializationEndpoint(std::optional<OutputMemoryHandle&>);
-  void SetArchive(std::optional<Archive&>);
+  void SetParsingEndpoint(InputMemoryHandle*);
+  void SetSerializationEndpoint(OutputMemoryHandle*);
+  void SetArchive(Archive*);
   bool Upsync() override;
   bool Downsync() override;
+};
+
+class PSArcFile : public FileSourceProvider {
+private:
+  size_t uncompressedSize;
+  PSArcHandle& psarcHandle;
+
+public:
+  PSArcFile(PSArcHandle& psarcHandle);
+  std::vector<byte> GetBytes() override;
+  CompressionType GetCompressionType() override;
 };
 
 }  // namespace PSArc

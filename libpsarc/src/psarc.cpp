@@ -2,6 +2,7 @@
 
 #include <bit>
 #include <cstring>
+#include <iostream>
 
 struct uint40_t {
   byte data[5];
@@ -30,8 +31,31 @@ struct uint40_t {
   }
 };
 
+struct uint24_t {
+  byte data[3];
+
+  operator uint32_t() const {
+    if constexpr (std::endian::native == std::endian::little) {
+      uint32_t v = 0;
+      v |= static_cast<uint32_t>(data[0]) << 0;
+      v |= static_cast<uint32_t>(data[1]) << 8;
+      v |= static_cast<uint32_t>(data[2]) << 16;
+
+      return v;
+    }
+    else {
+      uint32_t v = 0;
+      v |= static_cast<uint32_t>(data[2]) << 0;
+      v |= static_cast<uint32_t>(data[1]) << 8;
+      v |= static_cast<uint32_t>(data[0]) << 16;
+
+      return v;
+    }
+  }
+};
+
 template <typename T>
-static T swapEndian(T val) {
+static inline T swapEndian(T val) {
   static_assert(CHAR_BIT == 8, "CHAR_BIT != 8");
 
   union {
@@ -49,8 +73,13 @@ static T swapEndian(T val) {
 }
 
 template <typename T>
-static inline T readInteger(byte* ptr, size_t offset, bool endianMismatch = false) {
-  return reinterpret_cast<T*>(ptr + offset)[0];
+static inline T readInteger(const byte* ptr, size_t offset, bool endianMismatch = false) {
+  if (endianMismatch) {
+    return swapEndian(reinterpret_cast<const T*>(ptr + offset)[0]);
+  }
+  else {
+    return reinterpret_cast<const T*>(ptr + offset)[0];
+  }
 }
 
 static bool isPSArcFile(std::vector<byte>& header) {
@@ -94,52 +123,51 @@ public:
 PSArc::PSArcHandle::PSArcHandle() {
 }
 
-void PSArc::PSArcHandle::SetParsingEndpoint(std::optional<InputMemoryHandle&> memHandle) {
-  if (memHandle.has_value()) {
+void PSArc::PSArcHandle::SetParsingEndpoint(InputMemoryHandle* memHandle) {
+  if (memHandle != nullptr) {
     this->parsingEndpoint = memHandle;
     this->hasEndpoint     = true;
   }
   else {
-    this->parsingEndpoint.reset();
-    this->hasEndpoint = (this->serializationEndpoint.has_value());
+    this->parsingEndpoint = nullptr;
+    this->hasEndpoint     = (this->serializationEndpoint != nullptr);
   }
 }
 
-void PSArc::PSArcHandle::SetSerializationEndpoint(std::optional<OutputMemoryHandle&> memHandle) {
-  if (memHandle.has_value()) {
+void PSArc::PSArcHandle::SetSerializationEndpoint(OutputMemoryHandle* memHandle) {
+  if (memHandle != nullptr) {
     this->serializationEndpoint = memHandle;
     this->hasEndpoint           = true;
   }
   else {
-    this->serializationEndpoint.reset();
-    this->hasEndpoint = (this->parsingEndpoint.has_value());
+    this->serializationEndpoint = nullptr;
+    this->hasEndpoint           = (this->parsingEndpoint != nullptr);
   }
 }
 
-void PSArc::PSArcHandle::SetArchive(std::optional<Archive&> archive) {
+void PSArc::PSArcHandle::SetArchive(Archive* archive) {
   this->archiveEndpoint = archive;
 }
 
 bool PSArc::PSArcHandle::Downsync() {
-  if (!this->serializationEndpoint.has_value()) {
+  if (this->serializationEndpoint == nullptr) {
     return false;
   }
+
+  return true;
 }
 
 bool PSArc::PSArcHandle::Upsync() {
-  if (!this->parsingEndpoint.has_value()) {
+  if (this->parsingEndpoint == nullptr) {
     return false;
   }
 
-  if (!this->archiveEndpoint.has_value()) {
+  if (this->archiveEndpoint == nullptr) {
     return false;
   }
-
-  InputMemoryHandle& file = this->parsingEndpoint.value();
-  Archive& archive        = this->archiveEndpoint.value();
 
   std::vector<byte> header = std::vector<byte>(0x20);
-  file.Read(header.data(), 0x20);
+  this->parsingEndpoint->Read(header.data(), 0x20);
 
   if (!isPSArcFile(header)) {
     return false;
@@ -155,11 +183,40 @@ bool PSArc::PSArcHandle::Upsync() {
   PathType pathType               = static_cast<PathType>(readInteger<uint32_t>(header.data(), 0x1C, endianMismatch));
 
   std::vector<byte> toc = std::vector<byte>(tocLength);
-  file.Read(toc.data(), tocLength);
+  this->parsingEndpoint->Read(toc.data(), tocLength);
 
-  std::vector<TocEntry> tocEntries = std::vector<TocEntry>(tocEntriesCount);
+  std::vector<TocEntry> tocEntries = std::vector<TocEntry>();
 
   for (uint32_t i = 0; i < tocEntriesCount; i++) {
     tocEntries.push_back(TocEntry(toc.data(), i * tocEntrySize, endianMismatch));
   }
+
+  uint32_t blockPtrSize = 2;
+  if (blockSize > 0xFFFF)
+    blockPtrSize++;
+  if (blockSize > 0xFFFFFF)
+    blockPtrSize++;
+
+  uint32_t numBlocks = (tocLength - tocEntrySize * tocEntriesCount) / blockPtrSize;
+  uint32_t* blocks   = new uint32_t[numBlocks];
+
+  switch (blockPtrSize) {
+    case 2:
+      for (uint32_t i = 0; i < numBlocks; i++) {
+        blocks[i] = readInteger<uint16_t>(header.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
+      }
+      break;
+    case 3:
+      for (uint32_t i = 0; i < numBlocks; i++) {
+        blocks[i] = readInteger<uint24_t>(header.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
+      }
+      break;
+    case 4:
+      for (uint32_t i = 0; i < numBlocks; i++) {
+        blocks[i] = readInteger<uint32_t>(header.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
+      }
+      break;
+  }
+
+  return true;
 }

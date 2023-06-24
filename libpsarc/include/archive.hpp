@@ -1,6 +1,5 @@
 #pragma once
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,9 +23,10 @@ class File {
 private:
   std::vector<byte> uncompressedBytes;
   std::vector<byte> compressedBytes;
+  size_t uncompressedSize;
   CompressionType compressionType;
   std::string fullPath;
-  std::optional<FileSourceProvider&> source;
+  FileSourceProvider* source;
 
 public:
   File(std::string, std::vector<byte>);
