@@ -11,5 +11,5 @@ private:
 
 public:
   FileStructureHandle(std::string);
-}
+};
 }  // namespace PSArc

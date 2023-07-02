@@ -16,7 +16,7 @@ PSArc::FileHandle::FileHandle(std::string path)
   : fileStream(path.data(), std::ios_base::openmode::_S_in | std::ios_base::openmode::_S_out | std::ios_base::openmode::_S_bin) {
 }
 
-bool PSArc::FileHandle::Seek(SeekType type, size_t offset) {
+bool PSArc::FileHandle::Seek(size_t offset, SeekType type) {
   this->fileStream.seekg(offset, SeekTypeToSeekDir(type));
 
   return true;

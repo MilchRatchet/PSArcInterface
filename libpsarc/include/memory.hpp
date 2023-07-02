@@ -8,8 +8,8 @@ namespace PSArc {
 
 class MemoryHandle {
 public:
-  virtual bool Seek(SeekType, size_t) = 0;
-  virtual size_t Tell()               = 0;
+  virtual bool Seek(size_t, SeekType = SeekType::START) = 0;
+  virtual size_t Tell()                                 = 0;
 };
 
 class InputMemoryHandle : public MemoryHandle {
@@ -31,7 +31,7 @@ public:
   FileHandle(std::string);
   bool Read(byte* buf, size_t bytes_to_read) override;
   bool Write(byte* buf, size_t bytes_to_write) override;
-  bool Seek(SeekType, size_t) override;
+  bool Seek(size_t, SeekType = SeekType::START) override;
   size_t Tell() override;
 };
 

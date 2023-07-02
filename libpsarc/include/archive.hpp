@@ -1,5 +1,10 @@
 #pragma once
 
+#include <algorithm>
+#include <filesystem>
+#include <optional>
+#include <queue>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -21,24 +26,40 @@ public:
 
 class File {
 private:
-  std::vector<byte> uncompressedBytes;
-  std::vector<byte> compressedBytes;
+  std::optional<std::vector<byte>> uncompressedBytes;
+  std::optional<std::vector<byte>> compressedBytes;
   size_t uncompressedSize;
+  size_t compressedSize;
   CompressionType compressionType;
-  std::string fullPath;
   FileSourceProvider* source;
 
 public:
   File(std::string, std::vector<byte>);
-  File(std::string, FileSourceProvider&);
-  std::string name;
+  File(std::string, FileSourceProvider*);
+  bool Compress(CompressionType);
+  bool Compress();
+  std::filesystem::path path;
+  bool operator==(const File& rhs) {
+    return this->path == rhs.path;
+  }
 };
 
 class Directory {
 public:
+  Directory(std::string _name) : name(_name){};
   std::string name;
   std::vector<Directory> subDirectories;
   std::vector<File> files;
+  bool operator<(const Directory& c) {
+    return this->name < c.name;
+  }
+  bool operator>(const Directory& c) {
+    return this->name > c.name;
+  }
+  bool operator==(const Directory& rhs) {
+    return (this->name == rhs.name) && (this->subDirectories.size() == rhs.subDirectories.size())
+           && (this->files.size() == rhs.files.size());
+  }
 };
 
 class Archive {
@@ -46,11 +67,77 @@ private:
   uint16_t versionMajor;
   uint16_t versionMinor;
   PathType pathType;
+  Directory rootDirectory;
 
 public:
-  Directory rootDirectory;
+  class Iterator {
+  private:
+    std::queue<Directory> dirQueue;
+    std::queue<File> fileQueue;
+
+  public:
+    Iterator(){};
+    Iterator(Directory& root) : dirQueue(), fileQueue() {
+      std::for_each(root.subDirectories.begin(), root.subDirectories.end(), [this](Directory& dir) { this->dirQueue.push(dir); });
+      std::for_each(root.files.begin(), root.files.end(), [this](File& file) { this->fileQueue.push(file); });
+    };
+    const Iterator& operator++() {
+      while (this->fileQueue.empty() && !this->dirQueue.empty()) {
+        Directory& dir = this->dirQueue.front();
+        this->dirQueue.pop();
+
+        std::for_each(dir.files.begin(), dir.files.end(), [this](File& file) { this->fileQueue.push(file); });
+      }
+
+      if (!this->fileQueue.empty()) {
+        this->fileQueue.pop();
+      }
+
+      return *this;
+    };
+    Iterator operator++(int) {
+      Iterator result = *this;
+      ++(*this);
+      return result;
+    };
+    File& operator*() {
+      return this->fileQueue.front();
+    }
+    bool operator==(const Iterator& rhs) {
+      // This should be changed, what makes an iterator be equal to another and how can we do that efficiently?
+      bool foundDifference = false;
+
+      if (this->dirQueue.empty() || rhs.dirQueue.empty())
+        foundDifference = foundDifference || (this->dirQueue.empty() != rhs.dirQueue.empty());
+
+      if (this->fileQueue.empty() || rhs.fileQueue.empty())
+        foundDifference = foundDifference || (this->fileQueue.empty() != rhs.fileQueue.empty());
+
+      if (foundDifference)
+        return false;
+
+      if (!this->dirQueue.empty())
+        foundDifference = foundDifference || (this->dirQueue.front() != rhs.dirQueue.front());
+
+      if (!this->fileQueue.empty())
+        foundDifference = foundDifference || (this->fileQueue.front() != rhs.fileQueue.front());
+
+      return !foundDifference;
+    }
+    bool operator!=(const Iterator& rhs) {
+      return !this->operator==(rhs);
+    }
+  };
+
+  Archive() : rootDirectory("root"){};
   bool AddFile(File);
   File FindFile(std::string) const;
   Directory FindDirectory(std::string) const;
+  Iterator begin() {
+    return Iterator(rootDirectory);
+  };
+  Iterator end() {
+    return Iterator();
+  };
 };
 }  // namespace PSArc
