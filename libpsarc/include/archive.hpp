@@ -6,6 +6,7 @@
 #include <queue>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "types.hpp"
@@ -28,16 +29,21 @@ class File {
 private:
   std::optional<std::vector<byte>> uncompressedBytes;
   std::optional<std::vector<byte>> compressedBytes;
-  size_t uncompressedSize;
-  size_t compressedSize;
-  CompressionType compressionType;
+  CompressionType compressionType = CompressionType::NONE;
   FileSourceProvider* source;
+  bool compressedSource = false;
 
 public:
   File(std::string, std::vector<byte>);
   File(std::string, FileSourceProvider*);
-  bool Compress(CompressionType);
-  bool Compress();
+  void LoadCompressedBytes();
+  void LoadUncompressedBytes();
+  std::vector<byte>& GetCompressedBytes();
+  std::vector<byte>& GetUncompressedBytes();
+  void ClearCompressedBytes();
+  void ClearUncompressedBytes();
+  void Compress(CompressionType);
+  void Decompress();
   std::filesystem::path path;
   bool operator==(const File& rhs) {
     return this->path == rhs.path;
@@ -68,6 +74,7 @@ private:
   uint16_t versionMinor;
   PathType pathType;
   Directory rootDirectory;
+  std::unordered_map<std::string, File&> files;
 
 public:
   class Iterator {
@@ -131,8 +138,8 @@ public:
 
   Archive() : rootDirectory("root"){};
   bool AddFile(File);
-  File FindFile(std::string) const;
-  Directory FindDirectory(std::string) const;
+  File* FindFile(std::string);
+  Directory* FindDirectory(std::string);
   Iterator begin() {
     return Iterator(rootDirectory);
   };

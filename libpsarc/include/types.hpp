@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bit>
+#include <climits>
 #include <cstdint>
 
 typedef uint8_t byte;

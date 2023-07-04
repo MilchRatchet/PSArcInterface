@@ -62,36 +62,6 @@ bool PSArc::PSArcHandle::Downsync() {
   return true;
 }
 
-void PSArc::PSArcHandle::AddFilesToArchive(std::vector<TocEntry>& entries) {
-  if (this->parsingEndpoint == nullptr) {
-    return;
-  }
-
-  if (this->archiveEndpoint == nullptr) {
-    return;
-  }
-
-  TocEntry manifest = entries[0];
-
-  if (manifest.uncompressedSize != 0) {
-    this->parsingEndpoint->Seek(manifest.fileOffset);
-
-    uint32_t blockOffset = manifest.blockOffset;
-
-    PSArc::PSArcFile* manifestFileSource = new PSArcFile(*this, manifest);
-    PSArc::File manifestFile(std::string("/PSArcManifest.bin"), manifestFileSource);
-
-    this->archiveEndpoint->AddFile(manifestFile);
-
-    for (uint32_t i = 1; i < entries.size(); i++) {
-      PSArc::PSArcFile* fileSource = new PSArcFile(*this, entries[i]);
-      PSArc::File file(std::string("/Unknown.bin"), fileSource);
-
-      this->archiveEndpoint->AddFile(file);
-    }
-  }
-}
-
 bool PSArc::PSArcHandle::Upsync() {
   if (this->parsingEndpoint == nullptr) {
     return false;
@@ -110,12 +80,12 @@ bool PSArc::PSArcHandle::Upsync() {
 
   bool endianMismatch = isEndianMismatch(header);
 
-  CompressionType compressionType = getCompressionType(header.data() + 0x08);
-  uint32_t tocLength              = readScalar<uint32_t>(header.data(), 0x0C, endianMismatch);
-  uint32_t tocEntrySize           = readScalar<uint32_t>(header.data(), 0x10, endianMismatch);
-  uint32_t tocEntriesCount        = readScalar<uint32_t>(header.data(), 0x14, endianMismatch);
-  uint32_t blockSize              = readScalar<uint32_t>(header.data(), 0x18, endianMismatch);
-  PathType pathType               = static_cast<PathType>(readScalar<uint32_t>(header.data(), 0x1C, endianMismatch));
+  this->compressionType    = getCompressionType(header.data() + 0x08);
+  uint32_t tocLength       = readScalar<uint32_t>(header.data(), 0x0C, endianMismatch);
+  uint32_t tocEntrySize    = readScalar<uint32_t>(header.data(), 0x10, endianMismatch);
+  uint32_t tocEntriesCount = readScalar<uint32_t>(header.data(), 0x14, endianMismatch);
+  this->blockSize          = readScalar<uint32_t>(header.data(), 0x18, endianMismatch);
+  this->pathType           = static_cast<PathType>(readScalar<uint32_t>(header.data(), 0x1C, endianMismatch));
 
   std::vector<byte> toc = std::vector<byte>(tocLength);
   this->parsingEndpoint->Read(toc.data(), tocLength);
@@ -127,41 +97,98 @@ bool PSArc::PSArcHandle::Upsync() {
   }
 
   uint32_t blockPtrSize = 2;
-  if (blockSize > 0xFFFF)
+  if (blockSize > 0x10000)
     blockPtrSize++;
-  if (blockSize > 0xFFFFFF)
+  if (blockSize > 0x1000000)
     blockPtrSize++;
 
   uint32_t numBlocks = (tocLength - tocEntrySize * tocEntriesCount) / blockPtrSize;
-  uint32_t* blocks   = new uint32_t[numBlocks];
+
+  this->blocks = new uint32_t[numBlocks];
 
   switch (blockPtrSize) {
     case 2:
       for (uint32_t i = 0; i < numBlocks; i++) {
-        blocks[i] = readScalar<uint16_t>(header.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
+        this->blocks[i] = readScalar<uint16_t>(toc.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
       }
       break;
     case 3:
       for (uint32_t i = 0; i < numBlocks; i++) {
-        blocks[i] = readScalar<uint24_t>(header.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
+        this->blocks[i] = readScalar<uint24_t>(toc.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
       }
       break;
     case 4:
       for (uint32_t i = 0; i < numBlocks; i++) {
-        blocks[i] = readScalar<uint32_t>(header.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
+        this->blocks[i] = readScalar<uint32_t>(toc.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
       }
       break;
   }
 
-  AddFilesToArchive(tocEntries);
+  TocEntry manifest = tocEntries[0];
+
+  if (manifest.uncompressedSize != 0) {
+    this->parsingEndpoint->Seek(manifest.fileOffset);
+
+    PSArc::PSArcFile* manifestFileSource = new PSArcFile(*this, manifest, this->compressionType);
+    this->archiveEndpoint->AddFile(PSArc::File(std::string("/PSArcManifest.bin"), manifestFileSource));
+
+    PSArc::File* manifestFile = this->archiveEndpoint->FindFile("/PSArcManifest.bin");
+
+    if (manifestFile != nullptr) {
+      std::vector<byte>& manifest = manifestFile->GetUncompressedBytes();
+
+      std::stringstream fileNames((reinterpret_cast<char*>(manifest.data())));
+      std::string fileName;
+
+      for (uint32_t i = 1; i < tocEntries.size(); i++) {
+        std::getline(fileNames, fileName, '\n');
+        PSArc::PSArcFile* fileSource = new PSArcFile(*this, tocEntries[i], this->compressionType);
+        PSArc::File file(fileName, fileSource);
+
+        this->archiveEndpoint->AddFile(file);
+      }
+    }
+  }
 
   return true;
 }
 
 std::vector<byte> PSArc::PSArcFile::GetBytes() {
-  return std::vector<byte>();
+  if (this->psarcHandle.parsingEndpoint == nullptr) {
+    return std::vector<byte>();
+  }
+
+  uint64_t uncompressedSize = this->entry.uncompressedSize;
+  uint64_t uncompressedRead = 0;
+  uint32_t blockOffset      = this->entry.blockOffset;
+  uint64_t outputOffset     = 0;
+  uint32_t blockSize        = this->psarcHandle.blockSize;
+  uint32_t outputSize       = 0;
+
+  std::vector<byte> output = std::vector<byte>();
+
+  this->psarcHandle.parsingEndpoint->Seek(this->entry.fileOffset);
+
+  do {
+    uint32_t entrySize = this->psarcHandle.blocks[blockOffset];
+    outputSize += entrySize;
+    output.resize(outputSize);
+
+    if (entrySize == 0) {
+      this->psarcHandle.parsingEndpoint->Read(output.data() + outputOffset, blockSize);
+      outputOffset += blockSize;
+    }
+    else {
+      this->psarcHandle.parsingEndpoint->Read(output.data() + outputOffset, entrySize);
+      outputOffset += entrySize;
+    }
+    uncompressedRead += blockSize;
+    blockOffset++;
+  } while (uncompressedRead < uncompressedSize);
+
+  return output;
 }
 
 CompressionType PSArc::PSArcFile::GetCompressionType() {
-  return CompressionType::NONE;
+  return this->compressionType;
 }

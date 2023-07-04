@@ -33,11 +33,14 @@ class PSArcHandle : public ArchiveInterface {
 private:
   bool hasEndpoint;
   Archive* archiveEndpoint;
-  InputMemoryHandle* parsingEndpoint;
   OutputMemoryHandle* serializationEndpoint;
-  void AddFilesToArchive(std::vector<TocEntry>&);
 
 public:
+  InputMemoryHandle* parsingEndpoint = nullptr;
+  uint32_t* blocks                   = nullptr;
+  uint32_t blockSize;
+  PathType pathType               = PathType::RELATIVE;
+  CompressionType compressionType = CompressionType::NONE;
   PSArcHandle();
   void SetParsingEndpoint(InputMemoryHandle*);
   void SetSerializationEndpoint(OutputMemoryHandle*);
@@ -50,9 +53,11 @@ class PSArcFile : public FileSourceProvider {
 private:
   PSArcHandle& psarcHandle;
   TocEntry entry;
+  CompressionType compressionType;
 
 public:
-  PSArcFile(PSArcHandle& _psarcHandle, TocEntry _entry) : psarcHandle(_psarcHandle), entry(_entry){};
+  PSArcFile(PSArcHandle& _psarcHandle, TocEntry _entry, CompressionType _compressionType)
+    : psarcHandle(_psarcHandle), entry(_entry), compressionType(_compressionType){};
   std::vector<byte> GetBytes() override;
   CompressionType GetCompressionType() override;
 };
