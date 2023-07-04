@@ -79,21 +79,22 @@ private:
 public:
   class Iterator {
   private:
-    std::queue<Directory> dirQueue;
-    std::queue<File> fileQueue;
+    std::queue<Directory*> dirQueue;
+    std::queue<File*> fileQueue;
 
   public:
     Iterator(){};
     Iterator(Directory& root) : dirQueue(), fileQueue() {
-      std::for_each(root.subDirectories.begin(), root.subDirectories.end(), [this](Directory& dir) { this->dirQueue.push(dir); });
-      std::for_each(root.files.begin(), root.files.end(), [this](File& file) { this->fileQueue.push(file); });
+      std::for_each(
+        root.subDirectories.begin(), root.subDirectories.end(), [this](Directory& dir) { this->dirQueue.push(std::addressof(dir)); });
+      std::for_each(root.files.begin(), root.files.end(), [this](File& file) { this->fileQueue.push(std::addressof(file)); });
     };
     const Iterator& operator++() {
       while (this->fileQueue.empty() && !this->dirQueue.empty()) {
-        Directory& dir = this->dirQueue.front();
+        Directory* dir = this->dirQueue.front();
         this->dirQueue.pop();
 
-        std::for_each(dir.files.begin(), dir.files.end(), [this](File& file) { this->fileQueue.push(file); });
+        std::for_each(dir->files.begin(), dir->files.end(), [this](File& file) { this->fileQueue.push(std::addressof(file)); });
       }
 
       if (!this->fileQueue.empty()) {
@@ -107,7 +108,20 @@ public:
       ++(*this);
       return result;
     };
-    File& operator*() {
+    File* operator*() {
+      while (this->fileQueue.empty() && !this->dirQueue.empty()) {
+        Directory* dir = this->dirQueue.front();
+        this->dirQueue.pop();
+
+        std::for_each(dir->subDirectories.begin(), dir->subDirectories.end(), [this](Directory& subdir) {
+          this->dirQueue.push(std::addressof(subdir));
+        });
+        std::for_each(dir->files.begin(), dir->files.end(), [this](File& file) { this->fileQueue.push(std::addressof(file)); });
+      }
+
+      if (this->fileQueue.empty())
+        return nullptr;
+
       return this->fileQueue.front();
     }
     bool operator==(const Iterator& rhs) {

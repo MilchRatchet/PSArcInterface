@@ -122,7 +122,7 @@ void PSArc::File::Decompress() {
 }
 
 bool PSArc::Archive::AddFile(File file) {
-  Directory& current = this->rootDirectory;
+  std::reference_wrapper<Directory> current = std::ref(this->rootDirectory);
 
   bool parsePath = false;
 
@@ -130,24 +130,26 @@ bool PSArc::Archive::AddFile(File file) {
     auto pathElement            = (*it);
     std::string pathElementName = pathElement.generic_string();
 
+    Directory& curr = current.get();
+
     if (parsePath) {
       if (it == --file.path.end()) {
         // Is File
-        current.files.push_back(file);
-        this->files.insert(std::pair<std::string, PSArc::File&>(file.path.generic_string(), current.files.back()));
+        curr.files.push_back(file);
+        this->files.insert(std::pair<std::string, PSArc::File&>(file.path.generic_string(), curr.files.back()));
       }
       else {
         // Is Directory
         if (auto found = std::find_if(
-              current.subDirectories.begin(), current.subDirectories.end(),
+              curr.subDirectories.begin(), curr.subDirectories.end(),
               [&pathElementName](const Directory& dir) { return dir.name == pathElementName; });
-            found != std::end(current.subDirectories)) {
-          current = *found;
+            found != std::end(curr.subDirectories)) {
+          current = std::ref(*found);
         }
         else {
           Directory newDir(pathElementName);
-          current.subDirectories.push_back(newDir);
-          current = current.subDirectories.back();
+          curr.subDirectories.push_back(newDir);
+          current = std::ref(curr.subDirectories.back());
         }
       }
     }

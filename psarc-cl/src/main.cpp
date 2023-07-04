@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
   handle.SetArchive(&archive);
   handle.Upsync();
 
-  std::for_each(archive.begin(), archive.end(), [](PSArc::File& file) { std::cout << file.path.generic_string() << std::endl; });
+  std::for_each(archive.begin(), archive.end(), [](PSArc::File* file) { std::cout << file->path.generic_string() << std::endl; });
 
   return 0;
 }
