@@ -18,6 +18,7 @@ public:
 };
 
 class OutputMemoryHandle : public MemoryHandle {
+public:
   virtual bool Write(byte* buf, size_t bytes_to_write) = 0;
 };
 
@@ -26,6 +27,7 @@ class InOutMemoryHandle : public InputMemoryHandle, public OutputMemoryHandle {}
 class FileHandle : public InOutMemoryHandle {
 private:
   std::fstream fileStream;
+  bool validFileStream = false;
 
 public:
   FileHandle(std::string);
@@ -33,6 +35,9 @@ public:
   bool Write(byte* buf, size_t bytes_to_write) override;
   bool Seek(size_t, SeekType = SeekType::START) override;
   size_t Tell() override;
+  bool IsValid() const {
+    return validFileStream;
+  };
 };
 
 }  // namespace PSArc

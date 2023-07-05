@@ -6,22 +6,58 @@ static bool isPSArcFile(std::vector<byte>& header) {
   return (header[0] == 'P') && (header[1] == 'S') && (header[2] == 'A') && (header[3] == 'R');
 }
 
+static void writePSArcMagic(std::vector<byte>& header, size_t offset) {
+  header[0] = 'P';
+  header[1] = 'S';
+  header[2] = 'A';
+  header[3] = 'R';
+}
+
 static bool isEndianMismatch(std::vector<byte>& header) {
-  uint16_t majorVersion = readScalar<uint16_t>(header.data(), 0x04);
+  uint16_t majorVersion = PSArc::readScalar<uint16_t>(header.data(), 0x04);
 
   // majorVersion larger than 255 means that the byte order is most likely the wrong way around as such a high major version shouldn't
   // exist.
   return (majorVersion > 255);
 }
 
-static CompressionType getCompressionType(byte* ptr) {
+static uint32_t getBlockByteCountSize(uint32_t blockSize) {
+  uint32_t blockByteCountSize = 2;
+  if (blockSize > 0x10000)
+    blockByteCountSize++;
+  if (blockSize > 0x1000000)
+    blockByteCountSize++;
+
+  return blockByteCountSize;
+}
+
+static PSArc::CompressionType getCompressionType(byte* ptr) {
   switch (*ptr) {
     case 'z':
-      return CompressionType::ZLIB;
+      return PSArc::CompressionType::ZLIB;
     case 'l':
-      return CompressionType::LZMA;
+      return PSArc::CompressionType::LZMA;
     default:
-      return CompressionType::NONE;
+      return PSArc::CompressionType::NONE;
+  }
+}
+
+static void writeCompressionType(std::vector<byte>& header, size_t offset, PSArc::CompressionType type) {
+  switch (type) {
+    case PSArc::CompressionType::ZLIB:
+      header[offset + 0x00] = 'z';
+      header[offset + 0x01] = 'l';
+      header[offset + 0x02] = 'i';
+      header[offset + 0x03] = 'b';
+      break;
+    case PSArc::CompressionType::LZMA:
+      header[offset + 0x00] = 'l';
+      header[offset + 0x01] = 'z';
+      header[offset + 0x02] = 'm';
+      header[offset + 0x03] = 'a';
+      break;
+    default:
+      throw std::exception();
   }
 }
 
@@ -54,12 +90,80 @@ void PSArc::PSArcHandle::SetArchive(Archive* archive) {
   this->archiveEndpoint = archive;
 }
 
-bool PSArc::PSArcHandle::Downsync() {
+bool PSArc::PSArcHandle::Downsync(PSArcSettings settings) {
   if (this->serializationEndpoint == nullptr) {
     return false;
   }
 
+  if (this->archiveEndpoint == nullptr) {
+    return false;
+  }
+
+  bool endianMismatch = (std::endian::native != settings.endianness);
+
+  uint32_t tocEntriesCount = this->archiveEndpoint->GetFileCount();
+
+  std::vector<byte> header = std::vector<byte>(0x20);
+
+  writePSArcMagic(header, 0x00);
+  writeScalar<uint16_t>(header.data(), 0x04, settings.versionMajor, endianMismatch);
+  writeScalar<uint16_t>(header.data(), 0x06, settings.versionMinor, endianMismatch);
+  writeCompressionType(header, 0x08, settings.compressionType);
+  writeScalar<uint32_t>(header.data(), 0x10, settings.tocEntrySize, endianMismatch);
+  writeScalar<uint32_t>(header.data(), 0x14, tocEntriesCount, endianMismatch);
+  writeScalar<uint32_t>(header.data(), 0x18, settings.blockSize, endianMismatch);
+  writeScalar<uint32_t>(header.data(), 0x1C, settings.pathType, endianMismatch);
+
+  uint32_t blockByteCountSize = getBlockByteCountSize(blockSize);
+
+  uint32_t numBlocks = 0;
+  for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
+    numBlocks += 1 + ((*it)->GetUncompressedSize() / settings.blockSize);
+  }
+
+  uint32_t tocLength = settings.tocEntrySize * this->archiveEndpoint->GetFileCount() + numBlocks * blockByteCountSize;
+  writeScalar<uint32_t>(header.data(), 0x0C, tocLength, endianMismatch);
+
+  this->serializationEndpoint->Seek(0);
+  this->serializationEndpoint->Write(header.data(), 0x20);
+
+  size_t dataOffset = 0x20 + tocLength;
+
+  std::vector<TocEntry> tocEntries = std::vector<TocEntry>();
+  uint32_t* blockCompressedSizes   = new uint32_t[numBlocks];
+  uint32_t blockOffset             = 0;
+
+  this->serializationEndpoint->Seek(dataOffset);
+
+  for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
+    TocEntry entry = TocEntry(blockOffset, (*it)->GetUncompressedSize(), dataOffset);
+    tocEntries.push_back(entry);
+
+    (*it)->Compress(settings.compressionType, blockSize);
+    std::vector<uint32_t>& fileBlockSizes  = (*it)->GetCompressedBlockSizes();
+    std::vector<byte>& fileCompressedBytes = (*it)->GetCompressedBytes();
+
+    this->serializationEndpoint->Write(fileCompressedBytes.data(), fileCompressedBytes.size());
+    dataOffset += fileCompressedBytes.size();
+
+    for (size_t i = 0; i < fileBlockSizes.size(); i++) {
+      blockCompressedSizes[blockOffset++] = fileBlockSizes[i];
+    }
+  }
+
+  this->serializationEndpoint->Seek(0x20);
+  std::vector<byte> tocBytes = std::vector<byte>(settings.tocEntrySize);
+
+  for (size_t i = 0; i < tocEntries.size(); i++) {
+    tocEntries[i].ToByteArray(tocBytes.data(), endianMismatch);
+    this->serializationEndpoint->Write(tocBytes.data(), settings.tocEntrySize);
+  }
+
   return true;
+}
+
+bool PSArc::PSArcHandle::Downsync() {
+  return this->Downsync(PSArcSettings());
 }
 
 bool PSArc::PSArcHandle::Upsync() {
@@ -96,30 +200,25 @@ bool PSArc::PSArcHandle::Upsync() {
     tocEntries.push_back(TocEntry(toc.data(), i * tocEntrySize, endianMismatch));
   }
 
-  uint32_t blockPtrSize = 2;
-  if (blockSize > 0x10000)
-    blockPtrSize++;
-  if (blockSize > 0x1000000)
-    blockPtrSize++;
-
-  uint32_t numBlocks = (tocLength - tocEntrySize * tocEntriesCount) / blockPtrSize;
+  uint32_t blockByteCountSize = getBlockByteCountSize(blockSize);
+  uint32_t numBlocks          = (tocLength - tocEntrySize * tocEntriesCount) / blockByteCountSize;
 
   this->blocks = new uint32_t[numBlocks];
 
-  switch (blockPtrSize) {
+  switch (blockByteCountSize) {
     case 2:
       for (uint32_t i = 0; i < numBlocks; i++) {
-        this->blocks[i] = readScalar<uint16_t>(toc.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
+        this->blocks[i] = readScalar<uint16_t>(toc.data(), tocEntrySize * tocEntriesCount + i * blockByteCountSize, endianMismatch);
       }
       break;
     case 3:
       for (uint32_t i = 0; i < numBlocks; i++) {
-        this->blocks[i] = readScalar<uint24_t>(toc.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
+        this->blocks[i] = readScalar<uint24_t>(toc.data(), tocEntrySize * tocEntriesCount + i * blockByteCountSize, endianMismatch);
       }
       break;
     case 4:
       for (uint32_t i = 0; i < numBlocks; i++) {
-        this->blocks[i] = readScalar<uint32_t>(toc.data(), tocEntrySize * tocEntriesCount + i * blockPtrSize, endianMismatch);
+        this->blocks[i] = readScalar<uint32_t>(toc.data(), tocEntrySize * tocEntriesCount + i * blockByteCountSize, endianMismatch);
       }
       break;
   }
@@ -189,6 +288,14 @@ std::vector<byte> PSArc::PSArcFile::GetBytes() {
   return output;
 }
 
-CompressionType PSArc::PSArcFile::GetCompressionType() {
+PSArc::CompressionType PSArc::PSArcFile::GetCompressionType() {
   return this->compressionType;
+}
+
+bool PSArc::PSArcFile::HasUncompressedSize() {
+  return true;
+}
+
+size_t PSArc::PSArcFile::GetUncompressedSize() {
+  return entry.uncompressedSize;
 }

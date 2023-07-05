@@ -1,19 +1,22 @@
 #include "memory.hpp"
 
-static std::ios_base::seekdir SeekTypeToSeekDir(SeekType type) {
+static std::ios_base::seekdir SeekTypeToSeekDir(PSArc::SeekType type) {
   switch (type) {
-    case SeekType::START:
+    case PSArc::SeekType::START:
     default:
       return std::ios_base::seekdir::_S_beg;
-    case SeekType::CURRENT:
+    case PSArc::SeekType::CURRENT:
       return std::ios_base::seekdir::_S_cur;
-    case SeekType::END:
+    case PSArc::SeekType::END:
       return std::ios_base::seekdir::_S_end;
   }
 }
 
 PSArc::FileHandle::FileHandle(std::string path)
   : fileStream(path.data(), std::ios_base::openmode::_S_in | std::ios_base::openmode::_S_out | std::ios_base::openmode::_S_bin) {
+  if (!fileStream.fail()) {
+    this->validFileStream = true;
+  }
 }
 
 bool PSArc::FileHandle::Seek(size_t offset, SeekType type) {

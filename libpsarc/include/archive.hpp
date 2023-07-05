@@ -13,6 +13,8 @@
 
 namespace PSArc {
 
+class ArchiveSyncSettings {};
+
 class ArchiveInterface {
 public:
   virtual bool Upsync()   = 0;
@@ -23,6 +25,8 @@ class FileSourceProvider {
 public:
   virtual std::vector<byte> GetBytes()         = 0;
   virtual CompressionType GetCompressionType() = 0;
+  virtual bool HasUncompressedSize()           = 0;
+  virtual size_t GetUncompressedSize()         = 0;
 };
 
 class File {
@@ -32,6 +36,9 @@ private:
   CompressionType compressionType = CompressionType::NONE;
   FileSourceProvider* source;
   bool compressedSource = false;
+  std::optional<size_t> uncompressedSize;
+  std::vector<uint32_t> compressedBlockSizes;
+  uint32_t compressedMaxBlockSize = 0;
 
 public:
   File(std::string, std::vector<byte>);
@@ -42,8 +49,11 @@ public:
   std::vector<byte>& GetUncompressedBytes();
   void ClearCompressedBytes();
   void ClearUncompressedBytes();
-  void Compress(CompressionType);
+  void Compress(CompressionType, uint32_t = 0);
   void Decompress();
+  /* Returns the size of the uncompressed file. Note that this may cause file loads or decompression calls. */
+  size_t GetUncompressedSize();
+  std::vector<uint32_t>& GetCompressedBlockSizes();
   std::filesystem::path path;
   bool operator==(const File& rhs) {
     return this->path == rhs.path;
@@ -70,9 +80,6 @@ public:
 
 class Archive {
 private:
-  uint16_t versionMajor;
-  uint16_t versionMinor;
-  PathType pathType;
   Directory rootDirectory;
   std::unordered_map<std::string, File&> files;
 
@@ -149,11 +156,11 @@ public:
       return !this->operator==(rhs);
     }
   };
-
   Archive() : rootDirectory("root"){};
   bool AddFile(File);
   File* FindFile(std::string);
   Directory* FindDirectory(std::string);
+  size_t GetFileCount();
   Iterator begin() {
     return Iterator(rootDirectory);
   };
