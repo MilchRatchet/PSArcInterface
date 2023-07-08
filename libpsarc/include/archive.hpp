@@ -21,9 +21,18 @@ public:
   virtual bool Downsync() = 0;
 };
 
+struct FileData {
+  std::vector<byte> bytes;
+  std::vector<uint32_t> compressedBlockSizes;
+  std::vector<bool> blockIsCompressed;
+  CompressionType compressionType   = CompressionType::NONE;
+  uint32_t uncompressedMaxBlockSize = 0;
+  uint32_t uncompressedTotalSize    = 0;
+};
+
 class FileSourceProvider {
 public:
-  virtual std::vector<byte> GetBytes()         = 0;
+  virtual FileData GetData()                   = 0;
   virtual CompressionType GetCompressionType() = 0;
   virtual bool HasUncompressedSize()           = 0;
   virtual size_t GetUncompressedSize()         = 0;
@@ -31,22 +40,18 @@ public:
 
 class File {
 private:
-  std::optional<std::vector<byte>> uncompressedBytes;
-  std::optional<std::vector<byte>> compressedBytes;
-  CompressionType compressionType = CompressionType::NONE;
+  std::optional<FileData> uncompressedBytes;
+  std::optional<FileData> compressedBytes;
   FileSourceProvider* source;
   bool compressedSource = false;
-  std::optional<size_t> uncompressedSize;
-  std::vector<uint32_t> compressedBlockSizes;
-  uint32_t compressedMaxBlockSize = 0;
 
 public:
   File(std::string, std::vector<byte>);
   File(std::string, FileSourceProvider*);
-  void LoadCompressedBytes();
+  void LoadCompressedBytes(CompressionType = CompressionType::LZMA);
   void LoadUncompressedBytes();
-  std::vector<byte>& GetCompressedBytes();
-  std::vector<byte>& GetUncompressedBytes();
+  const std::vector<byte>& GetCompressedBytes();
+  const std::vector<byte>& GetUncompressedBytes();
   void ClearCompressedBytes();
   void ClearUncompressedBytes();
   void Compress(CompressionType, uint32_t = 0);

@@ -10,30 +10,29 @@ PSArc::File::File(std::string name, std::vector<byte> data) : uncompressedBytes(
 }
 
 PSArc::File::File(std::string name, FileSourceProvider* provider) : source(provider), path(name) {
-  this->compressionType  = (provider != nullptr) ? provider->GetCompressionType() : CompressionType::NONE;
   this->compressedSource = (provider != nullptr && provider->GetCompressionType() != CompressionType::NONE) ? true : false;
 }
 
-void PSArc::File::LoadCompressedBytes() {
+void PSArc::File::LoadCompressedBytes(CompressionType preferredType) {
   if (this->compressedBytes.has_value())
     return;
 
   if (this->source != nullptr) {
     if (this->compressedSource) {
-      this->compressedBytes = this->source->GetBytes();
+      this->compressedBytes = this->source->GetData();
       return;
     }
-    else if (this->compressionType != CompressionType::NONE) {
+    else if (preferredType != CompressionType::NONE) {
       LoadUncompressedBytes();
     }
   }
 
-  if (this->uncompressedBytes.has_value() && this->compressionType != CompressionType::NONE) {
-    Compress(this->compressionType);
+  if (this->uncompressedBytes.has_value() && preferredType != CompressionType::NONE) {
+    Compress(preferredType);
     return;
   }
 
-  this->compressedBytes.emplace(std::vector<byte>());
+  this->compressedBytes.emplace(FileData{});
 }
 
 void PSArc::File::LoadUncompressedBytes() {
@@ -47,7 +46,7 @@ void PSArc::File::LoadUncompressedBytes() {
       return;
     }
     else {
-      this->uncompressedBytes = this->source->GetBytes();
+      this->uncompressedBytes = this->source->GetData();
       return;
     }
   }
@@ -60,20 +59,20 @@ void PSArc::File::LoadUncompressedBytes() {
   this->uncompressedBytes.emplace(std::vector<byte>());
 }
 
-std::vector<byte>& PSArc::File::GetCompressedBytes() {
+const std::vector<byte>& PSArc::File::GetCompressedBytes() {
   if (!this->compressedBytes.has_value()) {
     LoadCompressedBytes();
   }
 
-  return this->compressedBytes.value();
+  return this->compressedBytes.value().bytes;
 }
 
-std::vector<byte>& PSArc::File::GetUncompressedBytes() {
+const std::vector<byte>& PSArc::File::GetUncompressedBytes() {
   if (!this->uncompressedBytes.has_value()) {
     LoadUncompressedBytes();
   }
 
-  return this->uncompressedBytes.value();
+  return this->uncompressedBytes.value().bytes;
 }
 
 void PSArc::File::ClearCompressedBytes() {
@@ -93,36 +92,23 @@ void PSArc::File::Compress(CompressionType type, uint32_t blockSize) {
     return;
   }
 
-  if (type == this->compressionType && this->compressedBytes.has_value() && this->compressedMaxBlockSize == blockSize) {
-    return;
-  }
+  FileData toCompress;
+  toCompress.compressionType          = type;
+  toCompress.uncompressedMaxBlockSize = blockSize;
 
-  this->compressionType        = type;
-  this->compressedMaxBlockSize = blockSize;
+  this->compressedBytes.emplace(toCompress);
 
-  if (type == CompressionType::NONE) {
-    ClearCompressedBytes();
-    return;
-  }
-
-  if (!this->compressedBytes.has_value()) {
-    this->compressedBytes.emplace(std::vector<byte>());
-  }
-
-  PSArc::Compress(this->compressedBytes.value(), this->uncompressedBytes.value(), type, this->compressedBlockSizes, blockSize);
+  PSArc::Compress(this->compressedBytes.value(), this->uncompressedBytes.value());
 }
 
 void PSArc::File::Decompress() {
   if (!this->compressedBytes.has_value()) {
-    ClearUncompressedBytes();
     return;
   }
 
-  if (!this->uncompressedBytes.has_value()) {
-    this->uncompressedBytes.emplace(std::vector<byte>());
-  }
+  this->uncompressedBytes.emplace(FileData{});
 
-  PSArc::Decompress(this->uncompressedBytes.value(), this->compressedBytes.value(), this->compressionType);
+  PSArc::Decompress(this->uncompressedBytes.value(), this->compressedBytes.value());
 }
 
 bool PSArc::Archive::AddFile(File file) {
@@ -185,25 +171,27 @@ size_t PSArc::Archive::GetFileCount() {
 
 size_t PSArc::File::GetUncompressedSize() {
   if (this->uncompressedBytes.has_value()) {
-    return this->uncompressedBytes.value().size();
+    return this->uncompressedBytes.value().uncompressedTotalSize;
   }
 
-  if (this->uncompressedSize.has_value()) {
-    return this->uncompressedSize.value();
+  if (this->compressedBytes.has_value()) {
+    return this->compressedBytes.value().uncompressedTotalSize;
   }
 
   if (this->source->HasUncompressedSize()) {
-    this->uncompressedSize.emplace(this->source->GetUncompressedSize());
-    return this->uncompressedSize.value();
+    return this->source->GetUncompressedSize();
   }
 
-  if (!this->uncompressedBytes.has_value()) {
-    this->LoadUncompressedBytes();
-  }
-
-  return this->uncompressedBytes.value().size();
+  return 0;
 }
 
 std::vector<uint32_t>& PSArc::File::GetCompressedBlockSizes() {
-  return this->compressedBlockSizes;
+  if (this->compressedBytes.has_value()) {
+    return this->compressedBytes.value().compressedBlockSizes;
+  }
+  else {
+    this->LoadCompressedBytes();
+  }
+
+  return this->compressedBytes.value().compressedBlockSizes;
 }

@@ -35,8 +35,8 @@ bool PSArc::FileHandle::Read(byte* buf, size_t bytes_to_read) {
   return true;
 }
 
-bool PSArc::FileHandle::Write(byte* buf, size_t bytes_to_write) {
-  this->fileStream.write(reinterpret_cast<char*>(buf), bytes_to_write);
+bool PSArc::FileHandle::Write(const byte* buf, size_t bytes_to_write) {
+  this->fileStream.write(reinterpret_cast<const char*>(buf), bytes_to_write);
 
   return true;
 }

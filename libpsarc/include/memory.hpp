@@ -19,7 +19,7 @@ public:
 
 class OutputMemoryHandle : public MemoryHandle {
 public:
-  virtual bool Write(byte* buf, size_t bytes_to_write) = 0;
+  virtual bool Write(const byte* buf, size_t bytes_to_write) = 0;
 };
 
 class InOutMemoryHandle : public InputMemoryHandle, public OutputMemoryHandle {};
@@ -32,7 +32,7 @@ private:
 public:
   FileHandle(std::string);
   bool Read(byte* buf, size_t bytes_to_read) override;
-  bool Write(byte* buf, size_t bytes_to_write) override;
+  bool Write(const byte* buf, size_t bytes_to_write) override;
   bool Seek(size_t, SeekType = SeekType::START) override;
   size_t Tell() override;
   bool IsValid() const {

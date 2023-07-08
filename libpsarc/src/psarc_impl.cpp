@@ -1,4 +1,4 @@
-#include "psarc.hpp"
+#include "psarc_impl.hpp"
 
 #include <iostream>
 
@@ -140,8 +140,8 @@ bool PSArc::PSArcHandle::Downsync(PSArcSettings settings) {
     tocEntries.push_back(entry);
 
     (*it)->Compress(settings.compressionType, blockSize);
-    std::vector<uint32_t>& fileBlockSizes  = (*it)->GetCompressedBlockSizes();
-    std::vector<byte>& fileCompressedBytes = (*it)->GetCompressedBytes();
+    std::vector<uint32_t>& fileBlockSizes        = (*it)->GetCompressedBlockSizes();
+    const std::vector<byte>& fileCompressedBytes = (*it)->GetCompressedBytes();
 
     this->serializationEndpoint->Write(fileCompressedBytes.data(), fileCompressedBytes.size());
     dataOffset += fileCompressedBytes.size();
@@ -234,9 +234,9 @@ bool PSArc::PSArcHandle::Upsync() {
     PSArc::File* manifestFile = this->archiveEndpoint->FindFile("/PSArcManifest.bin");
 
     if (manifestFile != nullptr) {
-      std::vector<byte>& manifest = manifestFile->GetUncompressedBytes();
+      const std::vector<byte>& manifest = manifestFile->GetUncompressedBytes();
 
-      std::stringstream fileNames((reinterpret_cast<char*>(manifest.data())));
+      std::stringstream fileNames((reinterpret_cast<const char*>(manifest.data())));
       std::string fileName;
 
       for (uint32_t i = 1; i < tocEntries.size(); i++) {
@@ -252,9 +252,9 @@ bool PSArc::PSArcHandle::Upsync() {
   return true;
 }
 
-std::vector<byte> PSArc::PSArcFile::GetBytes() {
+PSArc::FileData PSArc::PSArcFile::GetData() {
   if (this->psarcHandle.parsingEndpoint == nullptr) {
-    return std::vector<byte>();
+    return FileData{};
   }
 
   uint64_t uncompressedSize = this->entry.uncompressedSize;
@@ -264,23 +264,45 @@ std::vector<byte> PSArc::PSArcFile::GetBytes() {
   uint32_t blockSize        = this->psarcHandle.blockSize;
   uint32_t outputSize       = 0;
 
-  std::vector<byte> output = std::vector<byte>();
+  FileData output;
+  output.uncompressedTotalSize    = this->entry.uncompressedSize;
+  output.compressionType          = this->psarcHandle.compressionType;
+  output.uncompressedMaxBlockSize = this->psarcHandle.blockSize;
 
   this->psarcHandle.parsingEndpoint->Seek(this->entry.fileOffset);
 
   do {
     uint32_t entrySize = this->psarcHandle.blocks[blockOffset];
     outputSize += entrySize;
-    output.resize(outputSize);
+    output.bytes.resize(outputSize);
 
-    if (entrySize == 0) {
-      this->psarcHandle.parsingEndpoint->Read(output.data() + outputOffset, blockSize);
-      outputOffset += blockSize;
+    entrySize = (entrySize > 0) ? entrySize : blockSize;
+
+    uint32_t maxPossibleUncompressedSize = std::min((uint64_t) blockSize, uncompressedSize - uncompressedRead);
+
+    this->psarcHandle.parsingEndpoint->Read(output.bytes.data() + outputOffset, entrySize);
+
+    switch (this->psarcHandle.compressionType) {
+      case CompressionType::LZMA:
+        // LZMA has no real magic, 0x5d is very common though. This can and will fail in some cases.
+        // Another heuristic is to make sure that the data is actually smaller than the uncompressed part.
+        // However, sometimes compression may lead to no reduction in size which would cause a fail here aswell.
+        output.blockIsCompressed.emplace_back(output.bytes.data()[0] == 0x5d && entrySize != maxPossibleUncompressedSize);
+        break;
+      case CompressionType::ZLIB: {
+        uint16_t zlib_magic = readScalar<uint16_t>(output.bytes.data(), 0x00);
+        output.blockIsCompressed.emplace_back(
+          zlib_magic == 0x78da || zlib_magic == 0xda78 || zlib_magic == 0x789c || zlib_magic == 0x9c78 || zlib_magic == 0x7801
+          || zlib_magic == 0x0178);
+      } break;
+      default:
+        output.blockIsCompressed.emplace_back(false);
+        break;
     }
-    else {
-      this->psarcHandle.parsingEndpoint->Read(output.data() + outputOffset, entrySize);
-      outputOffset += entrySize;
-    }
+
+    outputOffset += entrySize;
+    output.compressedBlockSizes.emplace_back(entrySize);
+
     uncompressedRead += blockSize;
     blockOffset++;
   } while (uncompressedRead < uncompressedSize);

@@ -67,13 +67,17 @@ static void lzmaCompress(
   dst.resize(totalCompressedSize);
 }
 
-static void lzmaDecompress(std::vector<byte>& dst, const std::vector<byte>& src) {
+static void lzmaDecompress(
+  std::vector<byte>& dst, const std::vector<byte>& src, const std::vector<uint32_t>& compressedBlockSizes,
+  const std::vector<bool>& blockIsCompressed) {
   SizeT totalOutputSize = 0;
 
   SizeT uncompressedOffset = 0;
 
   SizeT remainingInput = src.size();
   SizeT inputOffset    = 0;
+
+  int blockNum = 0;
 
   ELzmaStatus lzmaStatus;
 
@@ -82,51 +86,66 @@ static void lzmaDecompress(std::vector<byte>& dst, const std::vector<byte>& src)
       // What should we do? This is clearly not a valid LZMA encoded string.
       throw std::exception();
     }
-    SizeT uncompressedSize;
-    std::memcpy(&uncompressedSize, src.data() + inputOffset + 5, 8);
 
-    totalOutputSize += uncompressedSize;
+    if (blockIsCompressed[blockNum]) {
+      SizeT uncompressedSize;
+      std::memcpy(&uncompressedSize, src.data() + inputOffset + 5, 8);
 
-    dst.resize(totalOutputSize);
+      totalOutputSize += uncompressedSize;
 
-    SizeT processedInput = remainingInput;
+      dst.resize(totalOutputSize);
 
-    int status = LzmaDecode(
-      dst.data() + uncompressedOffset, &uncompressedSize, src.data() + inputOffset + 13, &processedInput, src.data() + inputOffset, 5,
-      LZMA_FINISH_END, &lzmaStatus, &lzmaAllocFuncs);
+      SizeT processedInput = remainingInput;
 
-    uncompressedOffset += uncompressedSize;
+      int status = LzmaDecode(
+        dst.data() + uncompressedOffset, &uncompressedSize, src.data() + inputOffset + 13, &processedInput, src.data() + inputOffset, 5,
+        LZMA_FINISH_END, &lzmaStatus, &lzmaAllocFuncs);
 
-    remainingInput -= processedInput + 13;
-    inputOffset += processedInput + 13;
+      uncompressedOffset += uncompressedSize;
 
-    if (status != SZ_OK) {
-      // What should we do on error?
+      remainingInput -= processedInput + 13;
+      inputOffset += processedInput + 13;
+
+      if (status != SZ_OK) {
+        // What should we do on error?
+      }
     }
+    else {
+      // This block is not compressed
+      uint32_t sizeOfBlock = compressedBlockSizes[blockNum];
+      totalOutputSize += sizeOfBlock;
+      dst.resize(totalOutputSize);
+      std::memcpy(dst.data() + uncompressedOffset, src.data() + inputOffset, sizeOfBlock);
+
+      uncompressedOffset += sizeOfBlock;
+      remainingInput -= sizeOfBlock;
+      inputOffset += sizeOfBlock;
+    }
+
+    blockNum++;
   }
 }
 
-void PSArc::Compress(
-  std::vector<byte>& dst, const std::vector<byte>& src, CompressionType type, std::vector<uint32_t>& compressedBlockSizes,
-  uint32_t blockSize) {
-  switch (type) {
+void PSArc::Compress(FileData& dst, const FileData& src) {
+  switch (dst.compressionType) {
     case CompressionType::LZMA:
-      lzmaCompress(dst, src, compressedBlockSizes, blockSize);
+      lzmaCompress(dst.bytes, src.bytes, dst.compressedBlockSizes, dst.uncompressedMaxBlockSize);
+      break;
+    case CompressionType::NONE:
+      dst = src;
       break;
     default:
       break;
   }
 }
 
-void PSArc::Compress(std::vector<byte>& dst, const std::vector<byte>& src, CompressionType type) {
-  std::vector<uint32_t> _unused = std::vector<uint32_t>();
-  Compress(dst, src, type, _unused);
-}
-
-void PSArc::Decompress(std::vector<byte>& dst, const std::vector<byte>& src, CompressionType type) {
-  switch (type) {
+void PSArc::Decompress(FileData& dst, const FileData& src) {
+  switch (src.compressionType) {
     case CompressionType::LZMA:
-      lzmaDecompress(dst, src);
+      lzmaDecompress(dst.bytes, src.bytes, src.compressedBlockSizes, src.blockIsCompressed);
+      break;
+    case CompressionType::NONE:
+      dst = src;
       break;
     default:
       break;
