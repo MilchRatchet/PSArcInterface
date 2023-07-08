@@ -1,0 +1,36 @@
+include(FeatureSummary)
+set_package_properties(LibPSArc PROPERTIES
+  URL "https://github.com/MilchRatchet/PSArcInterface"
+  DESCRIPTION "Interface library for PSArc files"
+)
+
+@PACKAGE_INIT@
+
+set(LibPSArc_FOUND TRUE)
+
+# Find LibPSArc::Headers
+if(NOT TARGET LibPSArc::Headers)
+  include("${CMAKE_CURRENT_LIST_DIR}/LibPSArcHeadersTargets.cmake")
+endif()
+set(LibPSArc_HEADERS_FOUND TRUE)
+
+# Find LibPSArc::Shared
+if(NOT TARGET LibPSArc::Shared)
+  include("${CMAKE_CURRENT_LIST_DIR}/LibPSArcSharedTargets.cmake")
+endif()
+set(LibPSArc_SHARED_FOUND TRUE)
+
+# Find LibPSArc::Static
+if(NOT TARGET LibPSArc::Static)
+  include("${CMAKE_CURRENT_LIST_DIR}/LibPSArcStaticTargets.cmake")
+endif()
+set(LibPSArc_STATIC_FOUND TRUE)
+
+# Make sure LibPSArc::LibPSArc always exists
+if(NOT TARGET LibPSArc::LibPSArc)
+  add_library(LibPSArc::LibPSArc ALIAS LibPSArc::Shared)
+endif()
+
+set(LibPSArc_LIBRARIES LibPSArc::LibPSArc)
+set(LibPSArc_STATIC_LIBRARIES LibPSArc::Static)
+set(LibPSArc_STATIC_PRIVATE_LIBS)
