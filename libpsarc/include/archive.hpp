@@ -86,7 +86,7 @@ public:
 class Archive {
 private:
   Directory rootDirectory;
-  std::unordered_map<std::string, File&> files;
+  size_t fileCount = 0;
 
 public:
   class Iterator {

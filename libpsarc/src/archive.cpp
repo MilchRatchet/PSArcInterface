@@ -126,17 +126,20 @@ bool PSArc::Archive::AddFile(File file) {
       if (it == --file.path.end()) {
         // Is File
         curr.files.push_back(file);
-        this->files.insert(std::pair<std::string, PSArc::File&>(file.path.generic_string(), curr.files.back()));
+        this->fileCount++;
       }
       else {
         // Is Directory
-        if (auto found = std::find_if(
-              curr.subDirectories.begin(), curr.subDirectories.end(),
-              [&pathElementName](const Directory& dir) { return dir.name == pathElementName; });
-            found != std::end(curr.subDirectories)) {
-          current = std::ref(*found);
+        bool dirFound = false;
+        for (PSArc::Directory& dir : curr.subDirectories) {
+          if (dir.name == pathElementName) {
+            current  = std::ref(dir);
+            dirFound = true;
+            break;
+          }
         }
-        else {
+
+        if (!dirFound) {
           Directory newDir(pathElementName);
           curr.subDirectories.push_back(newDir);
           current = std::ref(curr.subDirectories.back());
@@ -154,19 +157,56 @@ bool PSArc::Archive::AddFile(File file) {
 }
 
 PSArc::File* PSArc::Archive::FindFile(std::string name) {
-  auto result = files.find(name);
+  std::reference_wrapper<Directory> current = std::ref(this->rootDirectory);
 
-  if (result == std::end(files))
-    return nullptr;
+  std::filesystem::path path((name));
 
-  PSArc::File& file = (*result).second;
+  bool parsePath = false;
 
-  // Apparently this is the address of the actual object behind the reference.
-  return std::addressof(file);
+  for (auto it = path.begin(); it != path.end(); it++) {
+    auto pathElement            = (*it);
+    std::string pathElementName = pathElement.generic_string();
+
+    Directory& curr = current.get();
+
+    if (parsePath) {
+      if (it == --path.end()) {
+        // Is File
+        for (PSArc::File& file : curr.files) {
+          if (file.path == path)
+            return std::addressof(file);
+        }
+
+        return nullptr;
+      }
+      else {
+        // Is Directory
+        bool dirFound = false;
+        for (PSArc::Directory& dir : curr.subDirectories) {
+          if (dir.name == pathElementName) {
+            current  = std::ref(dir);
+            dirFound = true;
+            break;
+          }
+        }
+
+        if (!dirFound) {
+          return nullptr;
+        }
+      }
+    }
+    else {
+      if (pathElementName[0] == '/') {
+        parsePath = true;
+      }
+    }
+  }
+
+  return nullptr;
 }
 
 size_t PSArc::Archive::GetFileCount() {
-  return files.size();
+  return this->fileCount;
 }
 
 size_t PSArc::File::GetUncompressedSize() {
