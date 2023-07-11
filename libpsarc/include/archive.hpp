@@ -25,7 +25,7 @@ struct FileData {
   std::vector<byte> bytes;
   std::vector<uint32_t> compressedBlockSizes;
   std::vector<bool> blockIsCompressed;
-  CompressionType compressionType   = CompressionType::NONE;
+  CompressionType compressionType   = CompressionType::PSARC_COMPRESSION_TYPE_NONE;
   uint32_t uncompressedMaxBlockSize = 0;
   uint32_t uncompressedTotalSize    = 0;
 };
@@ -48,7 +48,7 @@ private:
 public:
   File(std::string, std::vector<byte>);
   File(std::string, FileSourceProvider*);
-  void LoadCompressedBytes(CompressionType = CompressionType::LZMA);
+  void LoadCompressedBytes(CompressionType = CompressionType::PSARC_COMPRESSION_TYPE_LZMA);
   void LoadUncompressedBytes();
   const std::vector<byte>& GetCompressedBytes();
   const std::vector<byte>& GetUncompressedBytes();

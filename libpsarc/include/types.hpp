@@ -8,11 +8,11 @@ typedef uint8_t byte;
 
 namespace PSArc {
 
-enum CompressionType { NONE = 0, ZLIB = 1, LZMA = 2 };
+enum CompressionType { PSARC_COMPRESSION_TYPE_NONE = 0, PSARC_COMPRESSION_TYPE_ZLIB = 1, PSARC_COMPRESSION_TYPE_LZMA = 2 };
 
-enum PathType { RELATIVE = 0, IGNORECASE = 1, ABSOLUTE = 2 };
+enum PathType { PSARC_PATH_TYPE_RELATIVE = 0, PSARC_PATH_TYPE_IGNORECASE = 1, PSARC_PATH_TYPE_ABSOLUTE = 2 };
 
-enum SeekType { START = 0, CURRENT = 1, END = 2 };
+enum SeekType { PSARC_SEEK_TYPE_START = 0, PSARC_SEEK_TYPE_CURRENT = 1, PSARC_SEEK_TYPE_END = 2 };
 
 struct uint40_t {
   byte data[5];

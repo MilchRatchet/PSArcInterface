@@ -34,23 +34,23 @@ static uint32_t getBlockByteCountSize(uint32_t blockSize) {
 static PSArc::CompressionType getCompressionType(byte* ptr) {
   switch (*ptr) {
     case 'z':
-      return PSArc::CompressionType::ZLIB;
+      return PSArc::CompressionType::PSARC_COMPRESSION_TYPE_ZLIB;
     case 'l':
-      return PSArc::CompressionType::LZMA;
+      return PSArc::CompressionType::PSARC_COMPRESSION_TYPE_LZMA;
     default:
-      return PSArc::CompressionType::NONE;
+      return PSArc::CompressionType::PSARC_COMPRESSION_TYPE_NONE;
   }
 }
 
 static void writeCompressionType(std::vector<byte>& header, size_t offset, PSArc::CompressionType type) {
   switch (type) {
-    case PSArc::CompressionType::ZLIB:
+    case PSArc::CompressionType::PSARC_COMPRESSION_TYPE_ZLIB:
       header[offset + 0x00] = 'z';
       header[offset + 0x01] = 'l';
       header[offset + 0x02] = 'i';
       header[offset + 0x03] = 'b';
       break;
-    case PSArc::CompressionType::LZMA:
+    case PSArc::CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
       header[offset + 0x00] = 'l';
       header[offset + 0x01] = 'z';
       header[offset + 0x02] = 'm';
@@ -283,13 +283,13 @@ PSArc::FileData PSArc::PSArcFile::GetData() {
     this->psarcHandle.parsingEndpoint->Read(output.bytes.data() + outputOffset, entrySize);
 
     switch (this->psarcHandle.compressionType) {
-      case CompressionType::LZMA:
+      case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
         // LZMA has no real magic, 0x5d is very common though. This can and will fail in some cases.
         // Another heuristic is to make sure that the data is actually smaller than the uncompressed part.
         // However, sometimes compression may lead to no reduction in size which would cause a fail here aswell.
         output.blockIsCompressed.emplace_back(output.bytes.data()[0] == 0x5d && entrySize != maxPossibleUncompressedSize);
         break;
-      case CompressionType::ZLIB: {
+      case CompressionType::PSARC_COMPRESSION_TYPE_ZLIB: {
         uint16_t zlib_magic = readScalar<uint16_t>(output.bytes.data(), 0x00);
         output.blockIsCompressed.emplace_back(
           zlib_magic == 0x78da || zlib_magic == 0xda78 || zlib_magic == 0x789c || zlib_magic == 0x9c78 || zlib_magic == 0x7801

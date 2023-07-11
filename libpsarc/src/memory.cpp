@@ -2,18 +2,25 @@
 
 static std::ios_base::seekdir SeekTypeToSeekDir(PSArc::SeekType type) {
   switch (type) {
-    case PSArc::SeekType::START:
+    case PSArc::SeekType::PSARC_SEEK_TYPE_START:
     default:
       return std::ios_base::seekdir::_S_beg;
-    case PSArc::SeekType::CURRENT:
+    case PSArc::SeekType::PSARC_SEEK_TYPE_CURRENT:
       return std::ios_base::seekdir::_S_cur;
-    case PSArc::SeekType::END:
+    case PSArc::SeekType::PSARC_SEEK_TYPE_END:
       return std::ios_base::seekdir::_S_end;
   }
 }
 
 PSArc::FileHandle::FileHandle(std::string path)
   : fileStream(path.data(), std::ios_base::openmode::_S_in | std::ios_base::openmode::_S_out | std::ios_base::openmode::_S_bin) {
+  if (!fileStream.fail()) {
+    this->validFileStream = true;
+  }
+}
+
+PSArc::FileHandle::FileHandle(std::filesystem::path path)
+  : fileStream(path, std::ios_base::openmode::_S_in | std::ios_base::openmode::_S_out | std::ios_base::openmode::_S_bin) {
   if (!fileStream.fail()) {
     this->validFileStream = true;
   }

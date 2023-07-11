@@ -128,10 +128,10 @@ static void lzmaDecompress(
 
 void PSArc::Compress(FileData& dst, const FileData& src) {
   switch (dst.compressionType) {
-    case CompressionType::LZMA:
+    case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
       lzmaCompress(dst.bytes, src.bytes, dst.compressedBlockSizes, dst.uncompressedMaxBlockSize);
       break;
-    case CompressionType::NONE:
+    case CompressionType::PSARC_COMPRESSION_TYPE_NONE:
       dst = src;
       break;
     default:
@@ -141,10 +141,10 @@ void PSArc::Compress(FileData& dst, const FileData& src) {
 
 void PSArc::Decompress(FileData& dst, const FileData& src) {
   switch (src.compressionType) {
-    case CompressionType::LZMA:
+    case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
       lzmaDecompress(dst.bytes, src.bytes, src.compressedBlockSizes, src.blockIsCompressed);
       break;
-    case CompressionType::NONE:
+    case CompressionType::PSARC_COMPRESSION_TYPE_NONE:
       dst = src;
       break;
     default:

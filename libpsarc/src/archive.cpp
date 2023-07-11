@@ -10,7 +10,8 @@ PSArc::File::File(std::string name, std::vector<byte> data) : uncompressedBytes(
 }
 
 PSArc::File::File(std::string name, FileSourceProvider* provider) : source(provider), path(name) {
-  this->compressedSource = (provider != nullptr && provider->GetCompressionType() != CompressionType::NONE) ? true : false;
+  this->compressedSource =
+    (provider != nullptr && provider->GetCompressionType() != CompressionType::PSARC_COMPRESSION_TYPE_NONE) ? true : false;
 }
 
 void PSArc::File::LoadCompressedBytes(CompressionType preferredType) {
@@ -22,12 +23,12 @@ void PSArc::File::LoadCompressedBytes(CompressionType preferredType) {
       this->compressedBytes = this->source->GetData();
       return;
     }
-    else if (preferredType != CompressionType::NONE) {
+    else if (preferredType != CompressionType::PSARC_COMPRESSION_TYPE_NONE) {
       LoadUncompressedBytes();
     }
   }
 
-  if (this->uncompressedBytes.has_value() && preferredType != CompressionType::NONE) {
+  if (this->uncompressedBytes.has_value() && preferredType != CompressionType::PSARC_COMPRESSION_TYPE_NONE) {
     Compress(preferredType);
     return;
   }

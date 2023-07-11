@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <fstream>
 
 #include "types.hpp"
@@ -8,8 +9,8 @@ namespace PSArc {
 
 class MemoryHandle {
 public:
-  virtual bool Seek(size_t, SeekType = SeekType::START) = 0;
-  virtual size_t Tell()                                 = 0;
+  virtual bool Seek(size_t, SeekType = SeekType::PSARC_SEEK_TYPE_START) = 0;
+  virtual size_t Tell()                                                 = 0;
 };
 
 class InputMemoryHandle : public MemoryHandle {
@@ -31,9 +32,10 @@ private:
 
 public:
   FileHandle(std::string);
+  FileHandle(std::filesystem::path);
   bool Read(byte* buf, size_t bytes_to_read) override;
   bool Write(const byte* buf, size_t bytes_to_write) override;
-  bool Seek(size_t, SeekType = SeekType::START) override;
+  bool Seek(size_t, SeekType = SeekType::PSARC_SEEK_TYPE_START) override;
   size_t Tell() override;
   bool IsValid() const {
     return validFileStream;

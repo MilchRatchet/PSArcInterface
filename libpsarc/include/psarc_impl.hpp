@@ -42,10 +42,10 @@ class PSArcSettings : public ArchiveSyncSettings {
 public:
   uint16_t versionMajor           = 1;
   uint16_t versionMinor           = 4;
-  CompressionType compressionType = CompressionType::LZMA;
+  CompressionType compressionType = CompressionType::PSARC_COMPRESSION_TYPE_LZMA;
   uint32_t blockSize              = 65536;
   uint32_t tocEntrySize           = 30;
-  PathType pathType               = PathType::RELATIVE;
+  PathType pathType               = PathType::PSARC_PATH_TYPE_RELATIVE;
   std::endian endianness          = std::endian::native;
 };
 
@@ -62,8 +62,8 @@ public:
   InputMemoryHandle* parsingEndpoint = nullptr;
   uint32_t* blocks                   = nullptr;
   uint32_t blockSize;
-  PathType pathType               = PathType::RELATIVE;
-  CompressionType compressionType = CompressionType::NONE;
+  PathType pathType               = PathType::PSARC_PATH_TYPE_RELATIVE;
+  CompressionType compressionType = CompressionType::PSARC_COMPRESSION_TYPE_NONE;
   PSArcHandle();
   void SetParsingEndpoint(InputMemoryHandle*);
   void SetSerializationEndpoint(OutputMemoryHandle*);
