@@ -67,7 +67,7 @@ static void lzmaCompress(
   dst.resize(totalCompressedSize);
 }
 
-static void lzmaDecompress(
+static SizeT lzmaDecompress(
   std::vector<byte>& dst, const std::vector<byte>& src, const std::vector<uint32_t>& compressedBlockSizes,
   const std::vector<bool>& blockIsCompressed) {
   SizeT totalOutputSize = 0;
@@ -124,6 +124,8 @@ static void lzmaDecompress(
 
     blockNum++;
   }
+
+  return totalOutputSize;
 }
 
 void PSArc::Compress(FileData& dst, const FileData& src) {
@@ -142,7 +144,7 @@ void PSArc::Compress(FileData& dst, const FileData& src) {
 void PSArc::Decompress(FileData& dst, const FileData& src) {
   switch (src.compressionType) {
     case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
-      lzmaDecompress(dst.bytes, src.bytes, src.compressedBlockSizes, src.blockIsCompressed);
+      dst.uncompressedTotalSize = lzmaDecompress(dst.bytes, src.bytes, src.compressedBlockSizes, src.blockIsCompressed);
       break;
     case CompressionType::PSARC_COMPRESSION_TYPE_NONE:
       dst = src;

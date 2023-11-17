@@ -50,14 +50,16 @@ public:
   File(std::string, FileSourceProvider*);
   void LoadCompressedBytes(CompressionType = CompressionType::PSARC_COMPRESSION_TYPE_LZMA);
   void LoadUncompressedBytes();
-  const std::vector<byte>& GetCompressedBytes();
-  const std::vector<byte>& GetUncompressedBytes();
+  const byte* GetCompressedBytes();
+  const byte* GetUncompressedBytes();
   void ClearCompressedBytes();
   void ClearUncompressedBytes();
   void Compress(CompressionType, uint32_t = 0);
   void Decompress();
   /* Returns the size of the uncompressed file. Note that this may cause file loads or decompression calls. */
   size_t GetUncompressedSize();
+  /* Returns the size of the compressed file. Note that this may cause file loads or compression calls. */
+  size_t GetCompressedSize();
   std::vector<uint32_t>& GetCompressedBlockSizes();
   std::filesystem::path path;
   bool operator==(const File& rhs) {

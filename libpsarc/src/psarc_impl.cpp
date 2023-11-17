@@ -140,11 +140,12 @@ bool PSArc::PSArcHandle::Downsync(PSArcSettings settings) {
     tocEntries.push_back(entry);
 
     (*it)->Compress(settings.compressionType, blockSize);
-    std::vector<uint32_t>& fileBlockSizes        = (*it)->GetCompressedBlockSizes();
-    const std::vector<byte>& fileCompressedBytes = (*it)->GetCompressedBytes();
+    std::vector<uint32_t>& fileBlockSizes = (*it)->GetCompressedBlockSizes();
+    const byte* fileCompressedBytes       = (*it)->GetCompressedBytes();
+    size_t fileCompressedBytesSize        = (*it)->GetCompressedSize();
 
-    this->serializationEndpoint->Write(fileCompressedBytes.data(), fileCompressedBytes.size());
-    dataOffset += fileCompressedBytes.size();
+    this->serializationEndpoint->Write(fileCompressedBytes, fileCompressedBytesSize);
+    dataOffset += fileCompressedBytesSize;
 
     for (size_t i = 0; i < fileBlockSizes.size(); i++) {
       blockCompressedSizes[blockOffset++] = fileBlockSizes[i];
@@ -234,9 +235,9 @@ bool PSArc::PSArcHandle::Upsync() {
     PSArc::File* manifestFile = this->archiveEndpoint->FindFile("/PSArcManifest.bin");
 
     if (manifestFile != nullptr) {
-      const std::vector<byte>& manifest = manifestFile->GetUncompressedBytes();
+      const byte* manifest = manifestFile->GetUncompressedBytes();
 
-      std::stringstream fileNames((reinterpret_cast<const char*>(manifest.data())));
+      std::stringstream fileNames((reinterpret_cast<const char*>(manifest)));
       std::string fileName;
 
       for (uint32_t i = 1; i < tocEntries.size(); i++) {
