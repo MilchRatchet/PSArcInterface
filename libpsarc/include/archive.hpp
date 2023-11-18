@@ -57,9 +57,11 @@ public:
   void Compress(CompressionType, uint32_t = 0);
   void Decompress();
   /* Returns the size of the uncompressed file. Note that this may cause file loads or decompression calls. */
-  size_t GetUncompressedSize();
+  size_t GetUncompressedSize() const noexcept;
   /* Returns the size of the compressed file. Note that this may cause file loads or compression calls. */
   size_t GetCompressedSize();
+  bool IsUncompressedSizeAvailable() const noexcept;
+  bool IsCompressedSizeAvailable() const noexcept;
   std::vector<uint32_t>& GetCompressedBlockSizes();
   std::filesystem::path path;
   bool operator==(const File& rhs) {
@@ -167,7 +169,7 @@ public:
   bool AddFile(File);
   File* FindFile(std::string);
   Directory* FindDirectory(std::string);
-  size_t GetFileCount();
+  size_t GetFileCount() const noexcept;
   Iterator begin() {
     return Iterator(rootDirectory);
   };

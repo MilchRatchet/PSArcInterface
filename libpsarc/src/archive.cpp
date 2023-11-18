@@ -208,11 +208,11 @@ PSArc::File* PSArc::Archive::FindFile(std::string name) {
   return nullptr;
 }
 
-size_t PSArc::Archive::GetFileCount() {
+size_t PSArc::Archive::GetFileCount() const noexcept {
   return this->fileCount;
 }
 
-size_t PSArc::File::GetUncompressedSize() {
+size_t PSArc::File::GetUncompressedSize() const noexcept {
   if (this->uncompressedBytes.has_value()) {
     return this->uncompressedBytes.value().uncompressedTotalSize;
   }
@@ -234,6 +234,26 @@ size_t PSArc::File::GetCompressedSize() {
   }
 
   return this->compressedBytes.value().bytes.size();
+}
+
+bool PSArc::File::IsUncompressedSizeAvailable() const noexcept {
+  if (this->uncompressedBytes.has_value()) {
+    return true;
+  }
+
+  if (this->compressedBytes.has_value()) {
+    return true;
+  }
+
+  if (this->source->HasUncompressedSize()) {
+    return true;
+  }
+
+  return false;
+}
+
+bool PSArc::File::IsCompressedSizeAvailable() const noexcept {
+  return this->compressedBytes.has_value();
 }
 
 std::vector<uint32_t>& PSArc::File::GetCompressedBlockSizes() {
