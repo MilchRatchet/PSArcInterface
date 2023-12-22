@@ -5,16 +5,16 @@
 
 int UnpackPSArc(std::string& input, std::string& output) {
   PSArc::PSArcHandle handle;
-  PSArc::FileHandle file(input);
+  PSArc::FileHandle inputFileHandle(input);
 
-  if (!file.IsValid()) {
+  if (!inputFileHandle.IsValid()) {
     std::cout << "Failed to open file: " << input << std::endl;
     return -1;
   }
 
   PSArc::Archive archive;
 
-  handle.SetParsingEndpoint(&file);
+  handle.SetParsingEndpoint(&inputFileHandle);
   handle.SetArchive(&archive);
   handle.Upsync();
 
@@ -33,17 +33,12 @@ int UnpackPSArc(std::string& input, std::string& output) {
 
     fileOutputPath += file->path;
 
-    std::filesystem::path dirOutputPath(fileOutputPath);
-    dirOutputPath.remove_filename();
+    PSArc::FileHandle fileOutputHandle(fileOutputPath, true);
 
-    std::filesystem::create_directories(dirOutputPath);
-
-    std::fstream fileStream(fileOutputPath, std::ios_base::openmode::_S_out | std::ios_base::openmode::_S_bin);
-
-    if (!fileStream.fail()) {
+    if (fileOutputHandle.IsValid()) {
       std::cout << "\r\e[K[" << currentFileNumber << "/" << fileCount << "] " << file->path.generic_string();
 
-      fileStream.write(reinterpret_cast<const char*>(file->GetUncompressedBytes()), file->GetUncompressedSize());
+      fileOutputHandle.Write(file->GetUncompressedBytes(), file->GetUncompressedSize());
     }
     else {
       std::cout << "Failed to write file " << file->path.generic_string() << std::endl;

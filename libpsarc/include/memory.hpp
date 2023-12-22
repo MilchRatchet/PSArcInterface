@@ -32,13 +32,13 @@ private:
 
 public:
   FileHandle(std::string);
-  FileHandle(std::filesystem::path);
+  FileHandle(std::filesystem::path, bool overrideExistingFile = false);
   bool Read(byte* buf, size_t bytes_to_read) override;
   bool Write(const byte* buf, size_t bytes_to_write) override;
   bool Seek(size_t, SeekType = SeekType::PSARC_SEEK_TYPE_START) override;
   size_t Tell() override;
   bool IsValid() const {
-    return validFileStream;
+    return this->validFileStream;
   };
 };
 
