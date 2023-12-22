@@ -1,30 +1,35 @@
 #include <algorithm>
 #include <iostream>
 
-#include "memory.hpp"
 #include "psarc.hpp"
+#include "unpack.hpp"
 
 int main(int argc, char* argv[]) {
-  if (argc < 2) {
-    std::cout << "No path to psarc file was given!" << std::endl;
+  if (argc != 4) {
+    std::cout << "Usage:" << std::endl;
+    std::cout << "[pack,unpack]" << std::endl;
+    std::cout << "Input path" << std::endl;
+    std::cout << "Output path" << std::endl;
     return -1;
   }
 
-  PSArc::PSArcHandle handle;
-  PSArc::FileHandle file((std::string(argv[1])));
+  std::string modeString(argv[1]);
+  std::string inputString(argv[2]);
+  std::string outputString(argv[3]);
 
-  if (!file.IsValid()) {
-    std::cout << "Failed to open file: " << std::string(argv[1]) << std::endl;
+  bool isPackMode   = modeString.compare("pack") == 0;
+  bool isUnpackMode = modeString.compare("unpack") == 0;
+
+  if (isPackMode) {
+    return 0;
+  }
+  else if (isUnpackMode) {
+    return UnpackPSArc(inputString, outputString);
+  }
+  else {
+    std::cout << "No valid mode was specified (pack or unpack)" << std::endl;
     return -1;
   }
-
-  PSArc::Archive archive;
-
-  handle.SetParsingEndpoint(&file);
-  handle.SetArchive(&archive);
-  handle.Upsync();
-
-  std::for_each(archive.begin(), archive.end(), [](PSArc::File* file) { std::cout << file->path.generic_string() << std::endl; });
 
   /*
     PSArc::FileHandle test("Test.psarc");
@@ -34,6 +39,4 @@ int main(int argc, char* argv[]) {
     handleOut.SetArchive(&archive);
     handleOut.Downsync();
   */
-
-  return 0;
 }
