@@ -15,6 +15,12 @@ namespace PSArc {
 
 class ArchiveSyncSettings {};
 
+/*
+ * Abstract template for synchronizing the state of an archive from its
+ * parsing endpoint (Upsync) or to its serialization endpoint.
+ *
+ * [Parsing endpoint] --Upsync-> [Archive] --Downsync-> [Serialization endpoint]
+ */
 class ArchiveInterface {
 public:
   virtual bool Upsync()   = 0;
@@ -30,6 +36,9 @@ struct FileData {
   uint32_t uncompressedTotalSize    = 0;
 };
 
+/*
+ * Abstract template for a class that provides access to a file's content.
+ */
 class FileSourceProvider {
 public:
   virtual FileData GetData()                   = 0;
@@ -38,6 +47,11 @@ public:
   virtual size_t GetUncompressedSize()         = 0;
 };
 
+/*
+ * A generic file that handles the content of a file in both compressed and uncompressed state.
+ * The content of the file does not have to reside in memory in either state.
+ * The only guarantee is that an instance of this class can access the content in either state.
+ */
 class File {
 private:
   std::optional<FileData> uncompressedBytes;
@@ -87,6 +101,9 @@ public:
   }
 };
 
+/*
+ * A virtual psarc archive.
+ */
 class Archive {
 private:
   Directory rootDirectory;

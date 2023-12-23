@@ -50,7 +50,7 @@ public:
 };
 
 /*
- * Interface of a virtual archive to a psarc file.
+ * Interface of a virtual psarc archive to a psarc file.
  */
 class PSArcHandle : public ArchiveInterface {
 private:
@@ -73,6 +73,9 @@ public:
   bool Downsync(PSArcSettings);
 };
 
+/*
+ * A reference to a file in a virtual psarc archive.
+ */
 class PSArcFile : public FileSourceProvider {
 private:
   PSArcHandle& psarcHandle;

@@ -25,6 +25,9 @@ public:
 
 class InOutMemoryHandle : public InputMemoryHandle, public OutputMemoryHandle {};
 
+/*
+ * A handle for a physical file.
+ */
 class FileHandle : public InOutMemoryHandle {
 private:
   std::fstream fileStream;
