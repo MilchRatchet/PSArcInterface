@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -70,7 +71,8 @@ public:
   void SetArchive(Archive*);
   bool Upsync() override;
   bool Downsync() override;
-  bool Downsync(PSArcSettings);
+  bool Downsync(std::function<void(size_t, std::string)> = {});
+  bool Downsync(PSArcSettings, std::function<void(size_t, std::string)> = {});
 };
 
 /*

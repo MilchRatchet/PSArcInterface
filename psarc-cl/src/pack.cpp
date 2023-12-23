@@ -31,6 +31,8 @@ int PackPSArc(std::string& input, std::string& output) {
   // end of iterator is defined as a default constructed one
   static std::filesystem::recursive_directory_iterator end;
 
+  size_t currentFileNumber = 0;
+
   while (fileIterator != end) {
     std::filesystem::path filePath = fileIterator->path();
     ++fileIterator;
@@ -41,7 +43,7 @@ int PackPSArc(std::string& input, std::string& output) {
     PSArc::FileHandle fileHandle(filePath);
 
     if (fileHandle.IsValid()) {
-      std::cout << "\r\e[K" << filePath.generic_string();
+      std::cout << "\r\e[K[" << currentFileNumber << "] " << filePath.generic_string();
 
       std::uintmax_t fileSize = std::filesystem::file_size(filePath);
 
@@ -55,10 +57,17 @@ int PackPSArc(std::string& input, std::string& output) {
       std::cout << "\r\e[K"
                 << "Failed to read file: " << filePath.generic_string() << std::endl;
     }
+
+    currentFileNumber++;
   }
 
-  std::cout << "\r\e[KPacking files into: " << outputPath.generic_string();
-  handle.Downsync();
+  PSArc::PSArcSettings settings;
+  settings.endianness = std::endian::big;
+
+  std::cout << "\r\e[KPacking files into: " << outputPath.generic_string() << std::endl;
+  handle.Downsync(settings, [currentFileNumber](size_t numFilesPacked, std::string name) -> void {
+    std::cout << "\r\e[K[" << numFilesPacked << "/" << currentFileNumber << "] " << name;
+  });
 
   return 0;
 }

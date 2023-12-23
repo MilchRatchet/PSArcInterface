@@ -90,7 +90,7 @@ void PSArc::PSArcHandle::SetArchive(Archive* archive) {
   this->archiveEndpoint = archive;
 }
 
-bool PSArc::PSArcHandle::Downsync(PSArcSettings settings) {
+bool PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::function<void(size_t, std::string)> callbackFunc) {
   if (this->serializationEndpoint == nullptr) {
     return false;
   }
@@ -114,7 +114,7 @@ bool PSArc::PSArcHandle::Downsync(PSArcSettings settings) {
   writeScalar<uint32_t>(header.data(), 0x18, settings.blockSize, endianMismatch);
   writeScalar<uint32_t>(header.data(), 0x1C, settings.pathType, endianMismatch);
 
-  uint32_t blockByteCountSize = getBlockByteCountSize(blockSize);
+  uint32_t blockByteCountSize = getBlockByteCountSize(settings.blockSize);
 
   uint32_t numBlocks = 0;
   for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
@@ -136,10 +136,13 @@ bool PSArc::PSArcHandle::Downsync(PSArcSettings settings) {
   this->serializationEndpoint->Seek(dataOffset);
 
   for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
+    if (callbackFunc)
+      callbackFunc(tocEntries.size(), (*it)->path.generic_string());
+
     TocEntry entry = TocEntry(blockOffset, (*it)->GetUncompressedSize(), dataOffset);
     tocEntries.push_back(entry);
 
-    (*it)->Compress(settings.compressionType, blockSize);
+    (*it)->Compress(settings.compressionType, settings.blockSize);
     std::vector<uint32_t>& fileBlockSizes = (*it)->GetCompressedBlockSizes();
     const byte* fileCompressedBytes       = (*it)->GetCompressedBytes();
     size_t fileCompressedBytesSize        = (*it)->GetCompressedSize();
@@ -161,6 +164,10 @@ bool PSArc::PSArcHandle::Downsync(PSArcSettings settings) {
   }
 
   return true;
+}
+
+bool PSArc::PSArcHandle::Downsync(std::function<void(size_t, std::string)> callbackFunc) {
+  return this->Downsync(PSArcSettings(), callbackFunc);
 }
 
 bool PSArc::PSArcHandle::Downsync() {
