@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <iostream>
 
+#include "pack.hpp"
 #include "psarc.hpp"
 #include "unpack.hpp"
 
@@ -21,7 +22,7 @@ int main(int argc, char* argv[]) {
   bool isUnpackMode = modeString.compare("unpack") == 0;
 
   if (isPackMode) {
-    return 0;
+    return PackPSArc(inputString, outputString);
   }
   else if (isUnpackMode) {
     return UnpackPSArc(inputString, outputString);

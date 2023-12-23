@@ -41,7 +41,8 @@ int UnpackPSArc(std::string& input, std::string& output) {
       fileOutputHandle.Write(file->GetUncompressedBytes(), file->GetUncompressedSize());
     }
     else {
-      std::cout << "Failed to write file " << file->path.generic_string() << std::endl;
+      std::cout << "\r\e[K"
+                << "Failed to write file " << file->path.generic_string() << std::endl;
     }
 
     currentFileNumber++;
