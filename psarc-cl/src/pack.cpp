@@ -47,10 +47,12 @@ int PackPSArc(std::string& input, std::string& output) {
 
       std::uintmax_t fileSize = std::filesystem::file_size(filePath);
 
+      std::filesystem::path relativeFilePath = std::filesystem::relative(filePath, inputPath);
+
       std::vector<byte> bytes(fileSize);
       fileHandle.Read(bytes.data(), fileSize);
 
-      PSArc::File file(filePath.generic_string(), bytes);
+      PSArc::File file(relativeFilePath.generic_string(), bytes);
       archive.AddFile(file);
     }
     else {

@@ -117,15 +117,18 @@ void PSArc::File::Decompress() {
 bool PSArc::Archive::AddFile(File file) {
   std::reference_wrapper<Directory> current = std::ref(this->rootDirectory);
 
-  bool parsePath = false;
+  bool parsePath = true;
 
   for (auto it = file.path.begin(); it != file.path.end(); it++) {
-    auto pathElement            = (*it);
-    std::string pathElementName = pathElement.generic_string();
+    std::filesystem::path pathElement = (*it);
+    std::string pathElementName       = pathElement.generic_string();
 
     Directory& curr = current.get();
 
-    if (parsePath) {
+    if (pathElementName[0] == '/') {
+      parsePath = true;
+    }
+    else if (parsePath) {
       if (it == --file.path.end()) {
         // Is File
         curr.files.push_back(file);
@@ -147,11 +150,6 @@ bool PSArc::Archive::AddFile(File file) {
           curr.subDirectories.push_back(newDir);
           current = std::ref(curr.subDirectories.back());
         }
-      }
-    }
-    else {
-      if (pathElementName[0] == '/') {
-        parsePath = true;
       }
     }
   }
