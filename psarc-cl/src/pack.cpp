@@ -71,5 +71,7 @@ int PackPSArc(std::string& input, std::string& output) {
     std::cout << "\r\e[K[" << numFilesPacked << "/" << currentFileNumber << "] " << name;
   });
 
+  std::cout << "\r\e[KDone" << std::endl;
+
   return 0;
 }

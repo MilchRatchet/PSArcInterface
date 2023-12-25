@@ -6,7 +6,13 @@
 
 #include "compression.hpp"
 
-PSArc::File::File(std::string name, std::vector<byte> data) : uncompressedBytes(data), path(name) {
+PSArc::File::File(std::string name, std::vector<byte> data) : path(name) {
+  this->uncompressedBytes.emplace();
+  FileData& fileData = this->uncompressedBytes.value();
+
+  fileData.bytes                    = data;
+  fileData.uncompressedMaxBlockSize = 65535;
+  fileData.uncompressedTotalSize    = data.size();
 }
 
 PSArc::File::File(std::string name, FileSourceProvider* provider) : source(provider), path(name) {

@@ -281,10 +281,10 @@ PSArc::FileData PSArc::PSArcFile::GetData() {
 
   do {
     uint32_t entrySize = this->psarcHandle.blocks[blockOffset];
+    entrySize          = (entrySize > 0) ? entrySize : blockSize;
+
     outputSize += entrySize;
     output.bytes.resize(outputSize);
-
-    entrySize = (entrySize > 0) ? entrySize : blockSize;
 
     uint32_t maxPossibleUncompressedSize = std::min((uint64_t) blockSize, uncompressedSize - uncompressedRead);
 
