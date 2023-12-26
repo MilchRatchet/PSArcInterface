@@ -128,7 +128,8 @@ bool PSArc::Archive::AddFile(File file) {
 
   std::reference_wrapper<Directory> current = std::ref(this->rootDirectory);
 
-  bool parsePath = true;
+  bool parsePath    = true;
+  bool fileInserted = false;
 
   for (auto it = file.path.begin(); it != file.path.end(); it++) {
     std::filesystem::path pathElement = (*it);
@@ -144,6 +145,8 @@ bool PSArc::Archive::AddFile(File file) {
         // Is File
         curr.files.push_back(file);
         this->fileCount++;
+        fileInserted = true;
+        break;
       }
       else {
         // Is Directory
@@ -165,7 +168,7 @@ bool PSArc::Archive::AddFile(File file) {
     }
   }
 
-  return true;
+  return fileInserted;
 }
 
 PSArc::File* PSArc::Archive::FindFile(std::string name) {

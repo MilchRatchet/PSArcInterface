@@ -288,7 +288,9 @@ bool PSArc::PSArcHandle::Upsync() {
         PSArc::PSArcFile* fileSource = new PSArcFile(*this, tocEntries[i], this->compressionType);
         PSArc::File file(fileName, fileSource);
 
-        this->archiveEndpoint->AddFile(file);
+        if (!this->archiveEndpoint->AddFile(file)) {
+          return false;
+        }
       }
     }
   }
