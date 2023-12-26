@@ -6,9 +6,10 @@
 #include <string>
 #include <vector>
 
-#include "archive.hpp"
-#include "memory.hpp"
-#include "types.hpp"
+#include "psarc_archive.hpp"
+#include "psarc_error.hpp"
+#include "psarc_memory.hpp"
+#include "psarc_types.hpp"
 
 namespace PSArc {
 
@@ -69,10 +70,10 @@ public:
   void SetParsingEndpoint(InputMemoryHandle*);
   void SetSerializationEndpoint(OutputMemoryHandle*);
   void SetArchive(Archive*);
-  bool Upsync() override;
-  bool Downsync() override;
-  bool Downsync(std::function<void(size_t, std::string)> = {});
-  bool Downsync(PSArcSettings, std::function<void(size_t, std::string)> = {});
+  PSArcStatus Upsync() override;
+  PSArcStatus Downsync() override;
+  PSArcStatus Downsync(std::function<void(size_t, std::string)> = {});
+  PSArcStatus Downsync(PSArcSettings, std::function<void(size_t, std::string)> = {});
 };
 
 /*

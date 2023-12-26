@@ -1,4 +1,4 @@
-#include "memory.hpp"
+#include "psarc_memory.hpp"
 
 static std::ios_base::seekdir SeekTypeToSeekDir(PSArc::SeekType type) {
   switch (type) {

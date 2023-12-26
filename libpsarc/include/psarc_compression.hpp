@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "archive.hpp"
-#include "types.hpp"
+#include "psarc_archive.hpp"
+#include "psarc_types.hpp"
 
 namespace PSArc {
 

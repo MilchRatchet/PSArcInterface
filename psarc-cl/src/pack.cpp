@@ -67,11 +67,11 @@ int PackPSArc(std::string& input, std::string& output) {
   settings.endianness = std::endian::big;
 
   std::cout << "\r\e[KPacking files into: " << outputPath.generic_string() << std::endl;
-  bool success = handle.Downsync(settings, [currentFileNumber](size_t numFilesPacked, std::string name) -> void {
+  PSArc::PSArcStatus status = handle.Downsync(settings, [currentFileNumber](size_t numFilesPacked, std::string name) -> void {
     std::cout << "\r\e[K[" << numFilesPacked << "/" << currentFileNumber << "] " << name;
   });
 
-  if (success) {
+  if (status == PSArc::PSARC_STATUS_OK) {
     std::cout << "\r\e[KDone" << std::endl;
   }
   else {

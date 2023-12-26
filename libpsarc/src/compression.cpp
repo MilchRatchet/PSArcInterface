@@ -1,10 +1,9 @@
-#include "compression.hpp"
-
 #include <cstring>
 #include <exception>
 
 #include "LzmaDec.h"
 #include "LzmaEnc.h"
+#include "psarc_compression.hpp"
 
 static void* lzmaAlloc(ISzAllocPtr, size_t size) {
   return new byte[size];
@@ -46,7 +45,7 @@ static void lzmaCompress(
 
     dst.resize(totalCompressedSize + compressedBlockSize);
 
-    int lzmaStatus = LzmaEncode(
+    SRes lzmaStatus = LzmaEncode(
       dst.data() + totalCompressedSize + LZMA_HEADER_SIZE, &compressedBlockSize, src.data() + totalProcessedSize, processSize, &props,
       propsEncoded, &propsSize, 0, nullptr, &lzmaAllocFuncs, &lzmaAllocFuncs);
 
@@ -97,7 +96,7 @@ static SizeT lzmaDecompress(
 
       SizeT processedInput = remainingInput;
 
-      int status = LzmaDecode(
+      SRes status = LzmaDecode(
         dst.data() + uncompressedOffset, &uncompressedSize, src.data() + inputOffset + 13, &processedInput, src.data() + inputOffset, 5,
         LZMA_FINISH_END, &lzmaStatus, &lzmaAllocFuncs);
 

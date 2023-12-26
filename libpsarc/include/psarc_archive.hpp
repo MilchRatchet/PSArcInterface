@@ -9,7 +9,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "types.hpp"
+#include "psarc_error.hpp"
+#include "psarc_types.hpp"
 
 namespace PSArc {
 
@@ -23,8 +24,8 @@ class ArchiveSyncSettings {};
  */
 class ArchiveInterface {
 public:
-  virtual bool Upsync()   = 0;
-  virtual bool Downsync() = 0;
+  virtual PSArcStatus Upsync()   = 0;
+  virtual PSArcStatus Downsync() = 0;
 };
 
 struct FileData {

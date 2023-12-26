@@ -1,8 +1,8 @@
 #pragma once
 
-#include "archive.hpp"
-#include "compression.hpp"
-#include "filestructure.hpp"
-#include "memory.hpp"
+#include "psarc_archive.hpp"
+#include "psarc_compression.hpp"
+#include "psarc_filestructure.hpp"
 #include "psarc_impl.hpp"
-#include "types.hpp"
+#include "psarc_memory.hpp"
+#include "psarc_types.hpp"

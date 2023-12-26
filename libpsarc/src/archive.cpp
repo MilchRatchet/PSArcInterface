@@ -1,10 +1,9 @@
-#include "archive.hpp"
-
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
 
-#include "compression.hpp"
+#include "psarc_archive.hpp"
+#include "psarc_compression.hpp"
 
 PSArc::File::File(std::string name, std::vector<byte> data) : path(name) {
   this->uncompressedBytes.emplace();

@@ -90,13 +90,13 @@ void PSArc::PSArcHandle::SetArchive(Archive* archive) {
   this->archiveEndpoint = archive;
 }
 
-bool PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::function<void(size_t, std::string)> callbackFunc) {
+PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::function<void(size_t, std::string)> callbackFunc) {
   if (this->serializationEndpoint == nullptr) {
-    return false;
+    return PSARC_STATUS_ERROR_ENDPOINT;
   }
 
   if (this->archiveEndpoint == nullptr) {
-    return false;
+    return PSARC_STATUS_ERROR_ENDPOINT;
   }
 
   bool endianMismatch = (std::endian::native != settings.endianness);
@@ -199,31 +199,31 @@ bool PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::function<void(siz
 
   this->serializationEndpoint->Write(blockCompressedSizesBytes, blockByteCountSize * numBlocks);
 
-  return true;
+  return PSARC_STATUS_OK;
 }
 
-bool PSArc::PSArcHandle::Downsync(std::function<void(size_t, std::string)> callbackFunc) {
+PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(std::function<void(size_t, std::string)> callbackFunc) {
   return this->Downsync(PSArcSettings(), callbackFunc);
 }
 
-bool PSArc::PSArcHandle::Downsync() {
+PSArc::PSArcStatus PSArc::PSArcHandle::Downsync() {
   return this->Downsync(PSArcSettings());
 }
 
-bool PSArc::PSArcHandle::Upsync() {
+PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
   if (this->parsingEndpoint == nullptr) {
-    return false;
+    return PSARC_STATUS_ERROR_ENDPOINT;
   }
 
   if (this->archiveEndpoint == nullptr) {
-    return false;
+    return PSARC_STATUS_ERROR_ENDPOINT;
   }
 
   std::vector<byte> header = std::vector<byte>(0x20);
   this->parsingEndpoint->Read(header.data(), 0x20);
 
   if (!isPSArcFile(header)) {
-    return false;
+    return PSARC_STATUS_ERROR_HEADER;
   }
 
   bool endianMismatch = isEndianMismatch(header);
@@ -289,13 +289,13 @@ bool PSArc::PSArcHandle::Upsync() {
         PSArc::File file(fileName, fileSource);
 
         if (!this->archiveEndpoint->AddFile(file)) {
-          return false;
+          return PSARC_STATUS_ERROR_INSERT;
         }
       }
     }
   }
 
-  return true;
+  return PSARC_STATUS_OK;
 }
 
 PSArc::FileData PSArc::PSArcFile::GetData() {

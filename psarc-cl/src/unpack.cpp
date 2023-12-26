@@ -17,7 +17,7 @@ int UnpackPSArc(std::string& input, std::string& output) {
   handle.SetParsingEndpoint(&inputFileHandle);
   handle.SetArchive(&archive);
 
-  if (!handle.Upsync()) {
+  if (handle.Upsync() != PSArc::PSARC_STATUS_OK) {
     std::cout << "Failed to synchronize with archive." << std::endl;
     return -1;
   }

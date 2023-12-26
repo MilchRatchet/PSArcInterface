@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#include "archive.hpp"
+#include "psarc_archive.hpp"
 
 namespace PSArc {
 class FileStructureHandle {
@@ -12,4 +12,5 @@ private:
 public:
   FileStructureHandle(std::string);
 };
+
 }  // namespace PSArc

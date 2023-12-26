@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <fstream>
 
-#include "types.hpp"
+#include "psarc_types.hpp"
 
 namespace PSArc {
 
