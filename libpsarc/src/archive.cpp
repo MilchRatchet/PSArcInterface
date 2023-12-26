@@ -11,7 +11,7 @@ PSArc::File::File(std::string name, std::vector<byte> data) : path(name) {
   FileData& fileData = this->uncompressedBytes.value();
 
   fileData.bytes                    = data;
-  fileData.uncompressedMaxBlockSize = 65535;
+  fileData.uncompressedMaxBlockSize = 65536;
   fileData.uncompressedTotalSize    = data.size();
 }
 
@@ -121,6 +121,11 @@ void PSArc::File::Decompress() {
 }
 
 bool PSArc::Archive::AddFile(File file) {
+  if (file.path.generic_string() == "/PSArcManifest.bin") {
+    this->manifest.emplace(file);
+    return true;
+  }
+
   std::reference_wrapper<Directory> current = std::ref(this->rootDirectory);
 
   bool parsePath = true;
@@ -164,6 +169,13 @@ bool PSArc::Archive::AddFile(File file) {
 }
 
 PSArc::File* PSArc::Archive::FindFile(std::string name) {
+  if (name == "/PSArcManifest.bin") {
+    if (!this->manifest.has_value())
+      return nullptr;
+
+    return &this->manifest.value();
+  }
+
   std::reference_wrapper<Directory> current = std::ref(this->rootDirectory);
 
   std::filesystem::path path((name));
@@ -213,7 +225,7 @@ PSArc::File* PSArc::Archive::FindFile(std::string name) {
 }
 
 size_t PSArc::Archive::GetFileCount() const noexcept {
-  return this->fileCount;
+  return this->fileCount + 1;
 }
 
 size_t PSArc::File::GetUncompressedSize() const noexcept {

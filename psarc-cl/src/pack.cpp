@@ -67,11 +67,16 @@ int PackPSArc(std::string& input, std::string& output) {
   settings.endianness = std::endian::big;
 
   std::cout << "\r\e[KPacking files into: " << outputPath.generic_string() << std::endl;
-  handle.Downsync(settings, [currentFileNumber](size_t numFilesPacked, std::string name) -> void {
+  bool success = handle.Downsync(settings, [currentFileNumber](size_t numFilesPacked, std::string name) -> void {
     std::cout << "\r\e[K[" << numFilesPacked << "/" << currentFileNumber << "] " << name;
   });
 
-  std::cout << "\r\e[KDone" << std::endl;
+  if (success) {
+    std::cout << "\r\e[KDone" << std::endl;
+  }
+  else {
+    std::cout << "\r\e[KFailed to pack archive." << std::endl;
+  }
 
   return 0;
 }

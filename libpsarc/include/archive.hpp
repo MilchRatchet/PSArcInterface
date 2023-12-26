@@ -105,8 +105,9 @@ public:
  * A virtual psarc archive.
  */
 class Archive {
-private:
+protected:
   Directory rootDirectory;
+  std::optional<File> manifest;
   size_t fileCount = 0;
 
 public:
@@ -117,10 +118,17 @@ public:
 
   public:
     Iterator(){};
-    Iterator(Directory& root) : dirQueue(), fileQueue() {
-      std::for_each(
-        root.subDirectories.begin(), root.subDirectories.end(), [this](Directory& dir) { this->dirQueue.push(std::addressof(dir)); });
-      std::for_each(root.files.begin(), root.files.end(), [this](File& file) { this->fileQueue.push(std::addressof(file)); });
+    Iterator(Archive* archive) : dirQueue(), fileQueue() {
+      // It is important that the manifest file is iterated over first.
+      if (archive->manifest.has_value())
+        this->fileQueue.push(std::addressof(archive->manifest.value()));
+
+      std::for_each(archive->rootDirectory.subDirectories.begin(), archive->rootDirectory.subDirectories.end(), [this](Directory& dir) {
+        this->dirQueue.push(std::addressof(dir));
+      });
+      std::for_each(archive->rootDirectory.files.begin(), archive->rootDirectory.files.end(), [this](File& file) {
+        this->fileQueue.push(std::addressof(file));
+      });
     };
     const Iterator& operator++() {
       while (this->fileQueue.empty() && !this->dirQueue.empty()) {
@@ -187,8 +195,11 @@ public:
   File* FindFile(std::string);
   Directory* FindDirectory(std::string);
   size_t GetFileCount() const noexcept;
+  void RemoveManifestFile() noexcept {
+    this->manifest.reset();
+  };
   Iterator begin() {
-    return Iterator(rootDirectory);
+    return Iterator(this);
   };
   Iterator end() {
     return Iterator();

@@ -64,6 +64,22 @@ struct uint40_t {
 struct uint24_t {
   byte data[3];
 
+  // This must be a plain old data struct, hence no custom constructors allowed.
+  static uint24_t From(uint32_t v) {
+    uint24_t result;
+    if constexpr (std::endian::native == std::endian::little) {
+      result.data[0] = static_cast<byte>(v >> 0);
+      result.data[1] = static_cast<byte>(v >> 8);
+      result.data[2] = static_cast<byte>(v >> 16);
+    }
+    else {
+      result.data[0] = static_cast<byte>(v >> 24);
+      result.data[1] = static_cast<byte>(v >> 16);
+      result.data[2] = static_cast<byte>(v >> 8);
+    }
+    return result;
+  }
+
   operator uint32_t() const {
     if constexpr (std::endian::native == std::endian::little) {
       uint32_t v = 0;

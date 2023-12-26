@@ -101,6 +101,20 @@ bool PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::function<void(siz
 
   bool endianMismatch = (std::endian::native != settings.endianness);
 
+  // Rewrite manifest file.
+  this->archiveEndpoint->RemoveManifestFile();
+
+  std::vector<byte> manifestFileBytes;
+  for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
+    std::string filePath = (*it)->path.generic_string();
+    filePath += "\n";
+
+    std::vector<byte> filePathBytes(filePath.begin(), filePath.end());
+    manifestFileBytes.insert(manifestFileBytes.end(), filePathBytes.begin(), filePathBytes.end());
+  }
+
+  this->archiveEndpoint->AddFile(File("/PSArcManifest.bin", manifestFileBytes));
+
   uint32_t tocEntriesCount = this->archiveEndpoint->GetFileCount();
 
   std::vector<byte> header = std::vector<byte>(0x20);
@@ -162,6 +176,28 @@ bool PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::function<void(siz
     tocEntries[i].ToByteArray(tocBytes.data(), endianMismatch);
     this->serializationEndpoint->Write(tocBytes.data(), settings.tocEntrySize);
   }
+
+  byte* blockCompressedSizesBytes = new byte[blockByteCountSize * numBlocks];
+
+  switch (blockByteCountSize) {
+    case 2:
+      for (uint32_t i = 0; i < numBlocks; i++) {
+        writeScalar<uint16_t>(blockCompressedSizesBytes, i * blockByteCountSize, blockCompressedSizes[i], endianMismatch);
+      }
+      break;
+    case 3:
+      for (uint32_t i = 0; i < numBlocks; i++) {
+        writeScalar<uint24_t>(blockCompressedSizesBytes, i * blockByteCountSize, uint24_t::From(blockCompressedSizes[i]), endianMismatch);
+      }
+      break;
+    case 4:
+      for (uint32_t i = 0; i < numBlocks; i++) {
+        writeScalar<uint32_t>(blockCompressedSizesBytes, i * blockByteCountSize, blockCompressedSizes[i], endianMismatch);
+      }
+      break;
+  }
+
+  this->serializationEndpoint->Write(blockCompressedSizesBytes, blockByteCountSize * numBlocks);
 
   return true;
 }
