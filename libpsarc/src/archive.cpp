@@ -106,7 +106,7 @@ void PSArc::File::Compress(CompressionType type, uint32_t blockSize) {
 
   this->compressedBytes.emplace(toCompress);
 
-  PSArc::Compress(this->compressedBytes.value(), this->uncompressedBytes.value());
+  this->uncompressedBytes.value().Compress(this->compressedBytes.value());
 }
 
 void PSArc::File::Decompress() {
@@ -115,10 +115,9 @@ void PSArc::File::Decompress() {
   }
 
   FileData uncompressedData;
-
-  PSArc::Decompress(uncompressedData, this->compressedBytes.value());
-
   this->uncompressedBytes.emplace(uncompressedData);
+
+  this->compressedBytes.value().Decompress(this->uncompressedBytes.value());
 }
 
 bool PSArc::Archive::AddFile(File file) {

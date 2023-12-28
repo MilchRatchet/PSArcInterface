@@ -146,26 +146,26 @@ static SizeT lzmaDecompress(
   return totalOutputSize;
 }
 
-void PSArc::Compress(FileData& dst, const FileData& src) {
+void PSArc::FileData::Compress(FileData& dst) {
   switch (dst.compressionType) {
     case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
-      lzmaCompress(dst.bytes, src.bytes, dst.compressedBlockSizes, dst.uncompressedMaxBlockSize, dst.compressedMaxBlockSize);
+      lzmaCompress(dst.bytes, this->bytes, dst.compressedBlockSizes, dst.uncompressedMaxBlockSize, dst.compressedMaxBlockSize);
       break;
     case CompressionType::PSARC_COMPRESSION_TYPE_NONE:
-      dst = src;
+      dst = *this;
       break;
     default:
       break;
   }
 }
 
-void PSArc::Decompress(FileData& dst, const FileData& src) {
-  switch (src.compressionType) {
+void PSArc::FileData::Decompress(FileData& dst) {
+  switch (this->compressionType) {
     case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
-      dst.uncompressedTotalSize = lzmaDecompress(dst.bytes, src.bytes, src.compressedBlockSizes, src.blockIsCompressed);
+      dst.uncompressedTotalSize = lzmaDecompress(dst.bytes, this->bytes, this->compressedBlockSizes, this->blockIsCompressed);
       break;
     case CompressionType::PSARC_COMPRESSION_TYPE_NONE:
-      dst = src;
+      dst = *this;
       break;
     default:
       break;

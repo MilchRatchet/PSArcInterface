@@ -36,6 +36,9 @@ struct FileData {
   uint32_t uncompressedMaxBlockSize = 0;
   uint32_t uncompressedTotalSize    = 0;
   uint32_t compressedMaxBlockSize   = 0;
+
+  void Compress(FileData& dst);
+  void Decompress(FileData& dst);
 };
 
 /*
