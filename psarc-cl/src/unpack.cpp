@@ -24,6 +24,9 @@ int UnpackPSArc(std::string& input, std::string& output) {
 
   std::filesystem::path outputPath(output);
 
+  if (outputPath.generic_string().back() != '/')
+    outputPath += '/';
+
   if (!std::filesystem::is_directory(outputPath)) {
     std::cout << "Output path is not a directory" << std::endl;
     return -1;
@@ -34,8 +37,7 @@ int UnpackPSArc(std::string& input, std::string& output) {
 
   std::for_each(archive.begin(), archive.end(), [outputPath, fileCount, &currentFileNumber](PSArc::File* file) {
     std::filesystem::path fileOutputPath(outputPath);
-
-    fileOutputPath += file->path;
+    fileOutputPath += file->path.relative_path();
 
     PSArc::FileHandle fileOutputHandle(fileOutputPath, true);
 
