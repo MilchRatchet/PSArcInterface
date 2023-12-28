@@ -35,6 +35,7 @@ struct FileData {
   CompressionType compressionType   = CompressionType::PSARC_COMPRESSION_TYPE_NONE;
   uint32_t uncompressedMaxBlockSize = 0;
   uint32_t uncompressedTotalSize    = 0;
+  uint32_t compressedMaxBlockSize   = 0;
 };
 
 /*

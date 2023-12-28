@@ -12,6 +12,7 @@ PSArc::File::File(std::string name, std::vector<byte> data) : path(name) {
   fileData.bytes                    = data;
   fileData.uncompressedMaxBlockSize = 65536;
   fileData.uncompressedTotalSize    = data.size();
+  fileData.compressedMaxBlockSize   = 65536;
 }
 
 PSArc::File::File(std::string name, FileSourceProvider* provider) : source(provider), path(name) {
@@ -101,6 +102,7 @@ void PSArc::File::Compress(CompressionType type, uint32_t blockSize) {
   FileData toCompress;
   toCompress.compressionType          = type;
   toCompress.uncompressedMaxBlockSize = blockSize;
+  toCompress.compressedMaxBlockSize   = blockSize;
 
   this->compressedBytes.emplace(toCompress);
 

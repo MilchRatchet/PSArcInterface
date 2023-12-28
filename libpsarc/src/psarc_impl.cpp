@@ -130,9 +130,16 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   uint32_t blockByteCountSize = getBlockByteCountSize(settings.blockSize);
 
-  uint32_t numBlocks = 0;
+  uint32_t numFilesCompressed = 0;
+  uint32_t numBlocks          = 0;
   for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
-    numBlocks += 1 + ((*it)->GetUncompressedSize() / settings.blockSize);
+    if (callbackFunc)
+      callbackFunc(numFilesCompressed++, (*it)->path.generic_string());
+
+    (*it)->Compress(settings.compressionType, settings.blockSize);
+
+    std::vector<uint32_t>& fileBlockSizes = (*it)->GetCompressedBlockSizes();
+    numBlocks += fileBlockSizes.size();
   }
 
   uint32_t tocLength = settings.tocEntrySize * this->archiveEndpoint->GetFileCount() + numBlocks * blockByteCountSize;
@@ -156,7 +163,6 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     TocEntry entry = TocEntry(blockOffset, (*it)->GetUncompressedSize(), dataOffset);
     tocEntries.push_back(entry);
 
-    (*it)->Compress(settings.compressionType, settings.blockSize);
     std::vector<uint32_t>& fileBlockSizes = (*it)->GetCompressedBlockSizes();
     const byte* fileCompressedBytes       = (*it)->GetCompressedBytes();
     size_t fileCompressedBytesSize        = (*it)->GetCompressedSize();
@@ -248,7 +254,6 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
   uint32_t numBlocks          = (tocLength - tocEntrySize * tocEntriesCount) / blockByteCountSize;
 
   this->blocks = new uint32_t[numBlocks];
-
   switch (blockByteCountSize) {
     case 2:
       for (uint32_t i = 0; i < numBlocks; i++) {
@@ -267,30 +272,36 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
       break;
   }
 
+  // Blocks of size 0 are actually maximum block size
+  for (uint32_t i = 0; i < numBlocks; i++) {
+    this->blocks[i] = (this->blocks[i] > 0) ? this->blocks[i] : blockSize;
+  }
+
   TocEntry manifest = tocEntries[0];
 
-  if (manifest.uncompressedSize != 0) {
-    this->parsingEndpoint->Seek(manifest.fileOffset);
+  if (manifest.uncompressedSize == 0)
+    return PSARC_STATUS_ERROR_MANIFEST;
 
-    PSArc::PSArcFile* manifestFileSource = new PSArcFile(*this, manifest, this->compressionType);
-    this->archiveEndpoint->AddFile(PSArc::File(std::string("/PSArcManifest.bin"), manifestFileSource));
+  this->parsingEndpoint->Seek(manifest.fileOffset);
 
-    PSArc::File* manifestFile = this->archiveEndpoint->FindFile("/PSArcManifest.bin");
+  PSArc::PSArcFile* manifestFileSource = new PSArcFile(*this, manifest, this->compressionType);
+  this->archiveEndpoint->AddFile(PSArc::File(std::string("/PSArcManifest.bin"), manifestFileSource));
 
-    if (manifestFile != nullptr) {
-      const byte* manifest = manifestFile->GetUncompressedBytes();
+  PSArc::File* manifestFile = this->archiveEndpoint->FindFile("/PSArcManifest.bin");
 
-      std::stringstream fileNames((reinterpret_cast<const char*>(manifest)));
-      std::string fileName;
+  if (manifestFile != nullptr) {
+    const byte* manifest = manifestFile->GetUncompressedBytes();
 
-      for (uint32_t i = 1; i < tocEntries.size(); i++) {
-        std::getline(fileNames, fileName, '\n');
-        PSArc::PSArcFile* fileSource = new PSArcFile(*this, tocEntries[i], this->compressionType);
-        PSArc::File file(fileName, fileSource);
+    std::stringstream fileNames((reinterpret_cast<const char*>(manifest)));
+    std::string fileName;
 
-        if (!this->archiveEndpoint->AddFile(file)) {
-          return PSARC_STATUS_ERROR_INSERT;
-        }
+    for (uint32_t i = 1; i < tocEntries.size(); i++) {
+      std::getline(fileNames, fileName, '\n');
+      PSArc::PSArcFile* fileSource = new PSArcFile(*this, tocEntries[i], this->compressionType);
+      PSArc::File file(fileName, fileSource);
+
+      if (!this->archiveEndpoint->AddFile(file)) {
+        return PSARC_STATUS_ERROR_INSERT;
       }
     }
   }
@@ -314,12 +325,12 @@ PSArc::FileData PSArc::PSArcFile::GetData() {
   output.uncompressedTotalSize    = this->entry.uncompressedSize;
   output.compressionType          = this->psarcHandle.compressionType;
   output.uncompressedMaxBlockSize = this->psarcHandle.blockSize;
+  output.compressedMaxBlockSize   = this->psarcHandle.blockSize;
 
   this->psarcHandle.parsingEndpoint->Seek(this->entry.fileOffset);
 
   do {
     uint32_t entrySize = this->psarcHandle.blocks[blockOffset];
-    entrySize          = (entrySize > 0) ? entrySize : blockSize;
 
     outputSize += entrySize;
     output.bytes.resize(outputSize);
@@ -328,23 +339,24 @@ PSArc::FileData PSArc::PSArcFile::GetData() {
 
     this->psarcHandle.parsingEndpoint->Read(output.bytes.data() + outputOffset, entrySize);
 
+    bool blockIsCompressed;
     switch (this->psarcHandle.compressionType) {
       case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
         // LZMA has no real magic, 0x5d is very common though. This can and will fail in some cases.
         // Another heuristic is to make sure that the data is actually smaller than the uncompressed part.
         // However, sometimes compression may lead to no reduction in size which would cause a fail here aswell.
-        output.blockIsCompressed.emplace_back(output.bytes.data()[0] == 0x5d && entrySize != maxPossibleUncompressedSize);
+        blockIsCompressed = output.bytes.data()[0] == 0x5d && entrySize != maxPossibleUncompressedSize;
         break;
       case CompressionType::PSARC_COMPRESSION_TYPE_ZLIB: {
         uint16_t zlib_magic = readScalar<uint16_t>(output.bytes.data(), 0x00);
-        output.blockIsCompressed.emplace_back(
-          zlib_magic == 0x78da || zlib_magic == 0xda78 || zlib_magic == 0x789c || zlib_magic == 0x9c78 || zlib_magic == 0x7801
-          || zlib_magic == 0x0178);
+        blockIsCompressed   = zlib_magic == 0x78da || zlib_magic == 0xda78 || zlib_magic == 0x789c || zlib_magic == 0x9c78
+                            || zlib_magic == 0x7801 || zlib_magic == 0x0178;
       } break;
       default:
-        output.blockIsCompressed.emplace_back(false);
+        blockIsCompressed = false;
         break;
     }
+    output.blockIsCompressed.emplace_back(blockIsCompressed);
 
     outputOffset += entrySize;
     output.compressedBlockSizes.emplace_back(entrySize);
