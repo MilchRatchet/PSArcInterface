@@ -61,8 +61,8 @@ class File {
 private:
   std::optional<FileData> uncompressedBytes;
   std::optional<FileData> compressedBytes;
-  FileSourceProvider* source;
-  bool compressedSource = false;
+  FileSourceProvider* source = nullptr;
+  bool compressedSource      = false;
 
 public:
   File(std::string, std::vector<byte>);

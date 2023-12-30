@@ -3,6 +3,8 @@
 
 #include "psarc.hpp"
 
+#define RESET_LINE "\r\033[K"
+
 int UnpackPSArc(std::string& input, std::string& output) {
   PSArc::PSArcHandle handle;
   PSArc::FileHandle inputFileHandle(input);
@@ -42,13 +44,12 @@ int UnpackPSArc(std::string& input, std::string& output) {
     PSArc::FileHandle fileOutputHandle(fileOutputPath, true);
 
     if (fileOutputHandle.IsValid()) {
-      std::cout << "\r\e[K[" << currentFileNumber << "/" << fileCount << "] " << file->path.generic_string();
+      std::cout << RESET_LINE "[" << currentFileNumber << "/" << fileCount << "] " << file->path.generic_string();
 
       fileOutputHandle.Write(file->GetUncompressedBytes(), file->GetUncompressedSize());
     }
     else {
-      std::cout << "\r\e[K"
-                << "Failed to write file " << file->path.generic_string() << std::endl;
+      std::cout << RESET_LINE << "Failed to write file " << file->path.generic_string() << std::endl;
     }
 
     currentFileNumber++;

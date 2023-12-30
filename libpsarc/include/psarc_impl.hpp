@@ -66,7 +66,13 @@ public:
   uint32_t blockSize;
   PathType pathType               = PathType::PSARC_PATH_TYPE_RELATIVE;
   CompressionType compressionType = CompressionType::PSARC_COMPRESSION_TYPE_NONE;
+
   PSArcHandle();
+  ~PSArcHandle() {
+    if (this->blocks != nullptr)
+      delete[] this->blocks;
+  }
+
   void SetParsingEndpoint(InputMemoryHandle*);
   void SetSerializationEndpoint(OutputMemoryHandle*);
   void SetArchive(Archive*);

@@ -7,10 +7,10 @@ static bool isPSArcFile(std::vector<byte>& header) {
 }
 
 static void writePSArcMagic(std::vector<byte>& header, size_t offset) {
-  header[0] = 'P';
-  header[1] = 'S';
-  header[2] = 'A';
-  header[3] = 'R';
+  header[offset + 0] = 'P';
+  header[offset + 1] = 'S';
+  header[offset + 2] = 'A';
+  header[offset + 3] = 'R';
 }
 
 static bool isEndianMismatch(std::vector<byte>& header) {
@@ -204,6 +204,9 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   }
 
   this->serializationEndpoint->Write(blockCompressedSizesBytes, blockByteCountSize * numBlocks);
+
+  delete[] blockCompressedSizes;
+  delete[] blockCompressedSizesBytes;
 
   return PSARC_STATUS_OK;
 }

@@ -3,6 +3,8 @@
 
 #include "psarc.hpp"
 
+#define RESET_LINE "\r\033[K"
+
 int PackPSArc(std::string& input, std::string& output) {
   std::filesystem::path inputPath(input);
 
@@ -43,7 +45,7 @@ int PackPSArc(std::string& input, std::string& output) {
     PSArc::FileHandle fileHandle(filePath);
 
     if (fileHandle.IsValid()) {
-      std::cout << "\r\e[K[" << currentFileNumber << "] " << filePath.generic_string();
+      std::cout << RESET_LINE "[" << currentFileNumber << "] " << filePath.generic_string();
 
       std::uintmax_t fileSize = std::filesystem::file_size(filePath);
 
@@ -56,8 +58,7 @@ int PackPSArc(std::string& input, std::string& output) {
       archive.AddFile(file);
     }
     else {
-      std::cout << "\r\e[K"
-                << "Failed to read file: " << filePath.generic_string() << std::endl;
+      std::cout << RESET_LINE << "Failed to read file: " << filePath.generic_string() << std::endl;
     }
 
     currentFileNumber++;
@@ -66,16 +67,16 @@ int PackPSArc(std::string& input, std::string& output) {
   PSArc::PSArcSettings settings;
   settings.endianness = std::endian::big;
 
-  std::cout << "\r\e[KPacking files into: " << outputPath.generic_string() << std::endl;
+  std::cout << RESET_LINE "Packing files into: " << outputPath.generic_string() << std::endl;
   PSArc::PSArcStatus status = handle.Downsync(settings, [currentFileNumber](size_t numFilesPacked, std::string name) -> void {
-    std::cout << "\r\e[K[" << numFilesPacked << "/" << currentFileNumber << "] " << name;
+    std::cout << RESET_LINE "[" << numFilesPacked << "/" << currentFileNumber << "] " << name;
   });
 
   if (status == PSArc::PSARC_STATUS_OK) {
-    std::cout << "\r\e[KDone" << std::endl;
+    std::cout << RESET_LINE "Done" << std::endl;
   }
   else {
-    std::cout << "\r\e[KFailed to pack archive." << std::endl;
+    std::cout << RESET_LINE "Failed to pack archive." << std::endl;
   }
 
   return 0;
