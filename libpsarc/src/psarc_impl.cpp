@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "md5.h"
+
 static bool isPSArcFile(std::vector<byte>& header) {
   return (header[0] == 'P') && (header[1] == 'S') && (header[2] == 'A') && (header[3] == 'R');
 }
@@ -160,12 +162,21 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     if (callbackFunc)
       callbackFunc(tocEntries.size(), (*it)->path.generic_string());
 
-    TocEntry entry = TocEntry(blockOffset, (*it)->GetUncompressedSize(), dataOffset);
-    tocEntries.push_back(entry);
-
     std::vector<uint32_t>& fileBlockSizes = (*it)->GetCompressedBlockSizes();
     const byte* fileCompressedBytes       = (*it)->GetCompressedBytes();
     size_t fileCompressedBytesSize        = (*it)->GetCompressedSize();
+
+    TocEntry entry = TocEntry(blockOffset, (*it)->GetUncompressedSize(), dataOffset);
+
+    // Compute MD5 hash
+    MD5Context md5Context;
+    md5Init(&md5Context);
+    md5Update(&md5Context, fileCompressedBytes, fileCompressedBytesSize);
+    md5Finalize(&md5Context);
+
+    std::memcpy(entry.md5Hash, md5Context.digest, 16);
+
+    tocEntries.push_back(entry);
 
     this->serializationEndpoint->Write(fileCompressedBytes, fileCompressedBytesSize);
     dataOffset += fileCompressedBytesSize;

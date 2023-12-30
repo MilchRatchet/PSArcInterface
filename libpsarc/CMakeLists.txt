@@ -6,6 +6,7 @@ set(LIBPSARC_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 file(GLOB LIBPSARC_INCLUDE_FILES "${LIBPSARC_INCLUDE}/*.hpp")
 
 add_subdirectory(compression)
+add_subdirectory(hash)
 
 include(GNUInstallDirs)
 
@@ -17,7 +18,7 @@ target_include_directories(Headers INTERFACE "$<BUILD_INTERFACE:${LIBPSARC_INCLU
 target_include_directories(Headers INTERFACE "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>" "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/LibPSArc>")
 
 # setup shared target
-add_library(Shared SHARED ${LIBPSARC_SOURCE} ${LZMA_SOURCE} ${ZLIB_SOURCE})
+add_library(Shared SHARED ${LIBPSARC_SOURCE} ${LZMA_SOURCE} ${ZLIB_SOURCE} ${MD5_SOURCE})
 add_library(LibPSArc::Shared ALIAS Shared)
 set_target_properties(Shared PROPERTIES
   OUTPUT_NAME "psarc"
@@ -27,11 +28,12 @@ target_include_directories(Shared PRIVATE
   "$<BUILD_INTERFACE:${LIBPSARC_INCLUDE}>"
   "$<BUILD_INTERFACE:${LZMA_INCLUDE}>"
   "$<BUILD_INTERFACE:${ZLIB_INCLUDE}>"
+  "$<BUILD_INTERFACE:${MD5_INCLUDE}>"
 )
 target_link_libraries(Shared PUBLIC $<TARGET_NAME:LibPSArc::Headers>)
 
 # setup static target
-add_library(Static STATIC ${LIBPSARC_SOURCE} ${LZMA_SOURCE} ${ZLIB_SOURCE})
+add_library(Static STATIC ${LIBPSARC_SOURCE} ${LZMA_SOURCE} ${ZLIB_SOURCE} ${MD5_SOURCE})
 add_library(LibPSArc::Static ALIAS Static)
 set_target_properties(Static PROPERTIES
   OUTPUT_NAME "psarc"
@@ -41,6 +43,7 @@ target_include_directories(Static PRIVATE
   "$<BUILD_INTERFACE:${LIBPSARC_INCLUDE}>"
   "$<BUILD_INTERFACE:${LZMA_INCLUDE}>"
   "$<BUILD_INTERFACE:${ZLIB_INCLUDE}>"
+  "$<BUILD_INTERFACE:${MD5_INCLUDE}>"
 )
 target_link_libraries(Static PUBLIC $<TARGET_NAME:LibPSArc::Headers>)
 
