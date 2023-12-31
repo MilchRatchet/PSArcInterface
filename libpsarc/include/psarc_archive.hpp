@@ -65,15 +65,15 @@ private:
   bool compressedSource      = false;
 
 public:
-  File(std::string, std::vector<byte>);
-  File(std::string, FileSourceProvider*);
-  void LoadCompressedBytes(CompressionType = CompressionType::PSARC_COMPRESSION_TYPE_LZMA);
+  File(std::string name, std::vector<byte> data);
+  File(std::string name, FileSourceProvider* provider);
+  void LoadCompressedBytes(CompressionType preferredType = CompressionType::PSARC_COMPRESSION_TYPE_LZMA);
   void LoadUncompressedBytes();
   const byte* GetCompressedBytes();
   const byte* GetUncompressedBytes();
   void ClearCompressedBytes();
   void ClearUncompressedBytes();
-  void Compress(CompressionType, uint32_t = 0);
+  void Compress(CompressionType type, uint32_t blockSize);
   void Decompress();
   /* Returns the size of the uncompressed file. Note that this may cause file loads or decompression calls. */
   size_t GetUncompressedSize() const noexcept;
@@ -82,6 +82,7 @@ public:
   bool IsUncompressedSizeAvailable() const noexcept;
   bool IsCompressedSizeAvailable() const noexcept;
   std::vector<uint32_t>& GetCompressedBlockSizes();
+
   std::filesystem::path path;
   bool operator==(const File& rhs) {
     return this->path == rhs.path;
@@ -196,9 +197,8 @@ public:
     }
   };
   Archive() : rootDirectory("root"){};
-  bool AddFile(File);
-  File* FindFile(std::string);
-  Directory* FindDirectory(std::string);
+  bool AddFile(File file);
+  File* FindFile(std::string name);
   size_t GetFileCount() const noexcept;
   void RemoveManifestFile() noexcept {
     this->manifest.reset();

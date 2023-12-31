@@ -1,8 +1,9 @@
+#include "psarc_archive.hpp"
+
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
 
-#include "psarc_archive.hpp"
 #include "psarc_compression.hpp"
 
 PSArc::File::File(std::string name, std::vector<byte> data) : path(name) {
@@ -35,7 +36,7 @@ void PSArc::File::LoadCompressedBytes(CompressionType preferredType) {
   }
 
   if (this->uncompressedBytes.has_value() && preferredType != CompressionType::PSARC_COMPRESSION_TYPE_NONE) {
-    Compress(preferredType);
+    Compress(preferredType, this->uncompressedBytes.value().uncompressedMaxBlockSize);
     return;
   }
 
@@ -284,4 +285,30 @@ std::vector<uint32_t>& PSArc::File::GetCompressedBlockSizes() {
   }
 
   return this->compressedBytes.value().compressedBlockSizes;
+}
+
+void PSArc::FileData::Compress(FileData& dst) {
+  switch (dst.compressionType) {
+    case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
+      LZMACompress(dst.bytes, this->bytes, dst.compressedBlockSizes, dst.uncompressedMaxBlockSize, dst.compressedMaxBlockSize);
+      break;
+    case CompressionType::PSARC_COMPRESSION_TYPE_NONE:
+      dst = *this;
+      break;
+    default:
+      break;
+  }
+}
+
+void PSArc::FileData::Decompress(FileData& dst) {
+  switch (this->compressionType) {
+    case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
+      dst.uncompressedTotalSize = LZMADecompress(dst.bytes, this->bytes, this->compressedBlockSizes, this->blockIsCompressed);
+      break;
+    case CompressionType::PSARC_COMPRESSION_TYPE_NONE:
+      dst = *this;
+      break;
+    default:
+      break;
+  }
 }

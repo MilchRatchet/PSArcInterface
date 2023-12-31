@@ -56,13 +56,12 @@ public:
  */
 class PSArcHandle : public ArchiveInterface {
 private:
-  bool hasEndpoint;
   Archive* archiveEndpoint;
-  OutputMemoryHandle* serializationEndpoint;
 
 public:
-  InputMemoryHandle* parsingEndpoint = nullptr;
-  uint32_t* blocks                   = nullptr;
+  InputMemoryHandle* parsingEndpoint        = nullptr;
+  OutputMemoryHandle* serializationEndpoint = nullptr;
+  uint32_t* blocks                          = nullptr;
   uint32_t blockSize;
   PathType pathType               = PathType::PSARC_PATH_TYPE_RELATIVE;
   CompressionType compressionType = CompressionType::PSARC_COMPRESSION_TYPE_NONE;
@@ -73,13 +72,13 @@ public:
       delete[] this->blocks;
   }
 
-  void SetParsingEndpoint(InputMemoryHandle*);
-  void SetSerializationEndpoint(OutputMemoryHandle*);
-  void SetArchive(Archive*);
+  void SetParsingEndpoint(InputMemoryHandle* memHandle);
+  void SetSerializationEndpoint(OutputMemoryHandle* memHandle);
+  void SetArchive(Archive* archive);
   PSArcStatus Upsync() override;
   PSArcStatus Downsync() override;
-  PSArcStatus Downsync(std::function<void(size_t, std::string)> = {});
-  PSArcStatus Downsync(PSArcSettings, std::function<void(size_t, std::string)> = {});
+  PSArcStatus Downsync(std::function<void(size_t, std::string)> callbackFunc = {});
+  PSArcStatus Downsync(PSArcSettings settings, std::function<void(size_t, std::string)> callbackFunc = {});
 };
 
 /*

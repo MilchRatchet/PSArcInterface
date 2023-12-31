@@ -1,9 +1,10 @@
+#include "psarc_compression.hpp"
+
 #include <cstring>
 #include <exception>
 
 #include "LzmaDec.h"
 #include "LzmaEnc.h"
-#include "psarc_compression.hpp"
 
 static void* lzmaAlloc(ISzAllocPtr, size_t size) {
   return new byte[size];
@@ -20,11 +21,13 @@ static ISzAlloc lzmaAllocFuncs = {.Alloc = lzmaAlloc, .Free = lzmaFree};
 
 #define LZMA_HEADER_SIZE 13
 
-static void lzmaCompress(
+void PSArc::LZMACompress(
   std::vector<byte>& dst, const std::vector<byte>& src, std::vector<uint32_t>& compressedBlockSizes, uint32_t maxUncompressedBlockSize,
   uint32_t maxCompressedBlockSize) {
   CLzmaEncProps props;
   LzmaEncProps_Init(&props);
+
+  props.level = 9;
 
   SizeT propsSize = 5;
   byte propsEncoded[5];
@@ -32,7 +35,7 @@ static void lzmaCompress(
   SizeT uncompressedSize = src.size();
 
   if (maxUncompressedBlockSize == 0) {
-    maxUncompressedBlockSize = uncompressedSize;
+    throw std::exception();
   }
 
   SizeT totalCompressedSize = 0;
@@ -80,7 +83,7 @@ static void lzmaCompress(
   dst.resize(totalCompressedSize);
 }
 
-static SizeT lzmaDecompress(
+size_t PSArc::LZMADecompress(
   std::vector<byte>& dst, const std::vector<byte>& src, const std::vector<uint32_t>& compressedBlockSizes,
   const std::vector<bool>& blockIsCompressed) {
   SizeT totalOutputSize = 0;
@@ -144,30 +147,4 @@ static SizeT lzmaDecompress(
   }
 
   return totalOutputSize;
-}
-
-void PSArc::FileData::Compress(FileData& dst) {
-  switch (dst.compressionType) {
-    case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
-      lzmaCompress(dst.bytes, this->bytes, dst.compressedBlockSizes, dst.uncompressedMaxBlockSize, dst.compressedMaxBlockSize);
-      break;
-    case CompressionType::PSARC_COMPRESSION_TYPE_NONE:
-      dst = *this;
-      break;
-    default:
-      break;
-  }
-}
-
-void PSArc::FileData::Decompress(FileData& dst) {
-  switch (this->compressionType) {
-    case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
-      dst.uncompressedTotalSize = lzmaDecompress(dst.bytes, this->bytes, this->compressedBlockSizes, this->blockIsCompressed);
-      break;
-    case CompressionType::PSARC_COMPRESSION_TYPE_NONE:
-      dst = *this;
-      break;
-    default:
-      break;
-  }
 }

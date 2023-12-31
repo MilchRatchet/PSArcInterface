@@ -67,25 +67,11 @@ PSArc::PSArcHandle::PSArcHandle() {
 }
 
 void PSArc::PSArcHandle::SetParsingEndpoint(InputMemoryHandle* memHandle) {
-  if (memHandle != nullptr) {
-    this->parsingEndpoint = memHandle;
-    this->hasEndpoint     = true;
-  }
-  else {
-    this->parsingEndpoint = nullptr;
-    this->hasEndpoint     = (this->serializationEndpoint != nullptr);
-  }
+  this->parsingEndpoint = memHandle;
 }
 
 void PSArc::PSArcHandle::SetSerializationEndpoint(OutputMemoryHandle* memHandle) {
-  if (memHandle != nullptr) {
-    this->serializationEndpoint = memHandle;
-    this->hasEndpoint           = true;
-  }
-  else {
-    this->serializationEndpoint = nullptr;
-    this->hasEndpoint           = (this->parsingEndpoint != nullptr);
-  }
+  this->serializationEndpoint = memHandle;
 }
 
 void PSArc::PSArcHandle::SetArchive(Archive* archive) {
