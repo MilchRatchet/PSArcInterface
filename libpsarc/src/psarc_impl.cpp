@@ -23,11 +23,11 @@ static bool isEndianMismatch(std::vector<byte>& header) {
   return (majorVersion > 255);
 }
 
-static uint32_t getBlockByteCountSize(uint32_t blockSize) {
+static uint32_t getBlockByteCountSize(size_t blockSize) {
   uint32_t blockByteCountSize = 2;
-  if (blockSize > 0x10000)
+  if (blockSize > 0x10000ull)
     blockByteCountSize++;
-  if (blockSize > 0x1000000)
+  if (blockSize > 0x1000000ull)
     blockByteCountSize++;
 
   return blockByteCountSize;
@@ -104,7 +104,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   this->archiveEndpoint->AddFile(File("/PSArcManifest.bin", manifestFileBytes));
 
-  uint32_t tocEntriesCount = this->archiveEndpoint->GetFileCount();
+  size_t tocEntriesCount = this->archiveEndpoint->GetFileCount();
 
   std::vector<byte> header = std::vector<byte>(0x20);
 
@@ -113,7 +113,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   writeScalar<uint16_t>(header.data(), 0x06, settings.versionMinor, endianMismatch);
   writeCompressionType(header, 0x08, settings.compressionType);
   writeScalar<uint32_t>(header.data(), 0x10, settings.tocEntrySize, endianMismatch);
-  writeScalar<uint32_t>(header.data(), 0x14, tocEntriesCount, endianMismatch);
+  writeScalar<uint32_t>(header.data(), 0x14, uint32_t(tocEntriesCount), endianMismatch);
   writeScalar<uint32_t>(header.data(), 0x18, settings.blockSize, endianMismatch);
   writeScalar<uint32_t>(header.data(), 0x1C, settings.pathType, endianMismatch);
 
@@ -131,8 +131,8 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     numBlocks += fileBlockSizes.size();
   }
 
-  uint32_t tocLength = settings.tocEntrySize * this->archiveEndpoint->GetFileCount() + numBlocks * blockByteCountSize;
-  writeScalar<uint32_t>(header.data(), 0x0C, tocLength, endianMismatch);
+  size_t tocLength = settings.tocEntrySize * this->archiveEndpoint->GetFileCount() + numBlocks * blockByteCountSize;
+  writeScalar<uint32_t>(header.data(), 0x0C, uint32_t(tocLength), endianMismatch);
 
   this->serializationEndpoint->Seek(0);
   this->serializationEndpoint->Write(header.data(), 0x20);
@@ -153,7 +153,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     const byte* fileCompressedBytes     = (*it)->GetCompressedBytes();
     size_t fileCompressedBytesSize      = (*it)->GetCompressedSize();
 
-    TocEntry entry = TocEntry(blockOffset, (*it)->GetUncompressedSize(), dataOffset);
+    TocEntry entry = TocEntry(uint32_t(blockOffset), uint64_t((*it)->GetUncompressedSize()), dataOffset);
 
     // Compute MD5 hash
     MD5Context md5Context;
@@ -185,18 +185,19 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   switch (blockByteCountSize) {
     case 2:
-      for (uint32_t i = 0; i < numBlocks; i++) {
-        writeScalar<uint16_t>(blockCompressedSizesBytes, i * blockByteCountSize, blockCompressedSizes[i], endianMismatch);
+      for (size_t i = 0; i < numBlocks; i++) {
+        writeScalar<uint16_t>(blockCompressedSizesBytes, i * blockByteCountSize, uint16_t(blockCompressedSizes[i]), endianMismatch);
       }
       break;
     case 3:
-      for (uint32_t i = 0; i < numBlocks; i++) {
-        writeScalar<uint24_t>(blockCompressedSizesBytes, i * blockByteCountSize, uint24_t::From(blockCompressedSizes[i]), endianMismatch);
+      for (size_t i = 0; i < numBlocks; i++) {
+        writeScalar<uint24_t>(
+          blockCompressedSizesBytes, i * blockByteCountSize, uint24_t::From(uint32_t(blockCompressedSizes[i])), endianMismatch);
       }
       break;
     case 4:
-      for (uint32_t i = 0; i < numBlocks; i++) {
-        writeScalar<uint32_t>(blockCompressedSizesBytes, i * blockByteCountSize, blockCompressedSizes[i], endianMismatch);
+      for (size_t i = 0; i < numBlocks; i++) {
+        writeScalar<uint32_t>(blockCompressedSizesBytes, i * blockByteCountSize, uint32_t(blockCompressedSizes[i]), endianMismatch);
       }
       break;
   }
@@ -254,7 +255,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
   uint32_t blockByteCountSize = getBlockByteCountSize(blockSize);
   uint32_t numBlocks          = (tocLength - tocEntrySize * tocEntriesCount) / blockByteCountSize;
 
-  this->blocks = new uint32_t[numBlocks];
+  this->blocks = new size_t[numBlocks];
   switch (blockByteCountSize) {
     case 2:
       for (uint32_t i = 0; i < numBlocks; i++) {
@@ -291,9 +292,9 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
   PSArc::File* manifestFile = this->archiveEndpoint->FindFile("/PSArcManifest.bin");
 
   if (manifestFile != nullptr) {
-    const byte* manifest = manifestFile->GetUncompressedBytes();
+    const byte* manifestBytes = manifestFile->GetUncompressedBytes();
 
-    std::stringstream fileNames((reinterpret_cast<const char*>(manifest)));
+    std::stringstream fileNames((reinterpret_cast<const char*>(manifestBytes)));
     std::string fileName;
 
     for (uint32_t i = 1; i < tocEntries.size(); i++) {
@@ -319,8 +320,8 @@ PSArc::FileData PSArc::PSArcFile::GetData() {
   uint64_t uncompressedRead = 0;
   uint32_t blockOffset      = this->entry.blockOffset;
   uint64_t outputOffset     = 0;
-  uint32_t blockSize        = this->psarcHandle.blockSize;
-  uint32_t outputSize       = 0;
+  size_t blockSize          = this->psarcHandle.blockSize;
+  size_t outputSize         = 0;
 
   FileData output;
   output.uncompressedTotalSize    = this->entry.uncompressedSize;
@@ -331,12 +332,12 @@ PSArc::FileData PSArc::PSArcFile::GetData() {
   this->psarcHandle.parsingEndpoint->Seek(this->entry.fileOffset);
 
   do {
-    uint32_t entrySize = this->psarcHandle.blocks[blockOffset];
+    size_t entrySize = this->psarcHandle.blocks[blockOffset];
 
     outputSize += entrySize;
     output.bytes.resize(outputSize);
 
-    uint32_t maxPossibleUncompressedSize = std::min((uint64_t) blockSize, uncompressedSize - uncompressedRead);
+    uint64_t maxPossibleUncompressedSize = std::min((uint64_t) blockSize, uncompressedSize - uncompressedRead);
 
     this->psarcHandle.parsingEndpoint->Read(output.bytes.data() + outputOffset, entrySize);
 

@@ -61,8 +61,8 @@ private:
 public:
   InputMemoryHandle* parsingEndpoint        = nullptr;
   OutputMemoryHandle* serializationEndpoint = nullptr;
-  uint32_t* blocks                          = nullptr;
-  uint32_t blockSize;
+  size_t* blocks                            = nullptr;
+  size_t blockSize;
   PathType pathType               = PathType::PSARC_PATH_TYPE_RELATIVE;
   CompressionType compressionType = CompressionType::PSARC_COMPRESSION_TYPE_NONE;
 
