@@ -95,7 +95,7 @@ void PSArc::File::ClearUncompressedBytes() {
   }
 }
 
-void PSArc::File::Compress(CompressionType type, uint32_t blockSize) {
+void PSArc::File::Compress(CompressionType type, size_t blockSize) {
   if (!this->uncompressedBytes.has_value()) {
     return;
   }
@@ -276,7 +276,7 @@ bool PSArc::File::IsCompressedSizeAvailable() const noexcept {
   return this->compressedBytes.has_value();
 }
 
-std::vector<uint32_t>& PSArc::File::GetCompressedBlockSizes() {
+std::vector<size_t>& PSArc::File::GetCompressedBlockSizes() {
   if (this->compressedBytes.has_value()) {
     return this->compressedBytes.value().compressedBlockSizes;
   }

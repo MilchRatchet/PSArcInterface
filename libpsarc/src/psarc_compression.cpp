@@ -22,8 +22,8 @@ static ISzAlloc lzmaAllocFuncs = {.Alloc = lzmaAlloc, .Free = lzmaFree};
 #define LZMA_HEADER_SIZE 13
 
 void PSArc::LZMACompress(
-  std::vector<byte>& dst, const std::vector<byte>& src, std::vector<uint32_t>& compressedBlockSizes, uint32_t maxUncompressedBlockSize,
-  uint32_t maxCompressedBlockSize) {
+  std::vector<byte>& dst, const std::vector<byte>& src, std::vector<size_t>& compressedBlockSizes, size_t maxUncompressedBlockSize,
+  size_t maxCompressedBlockSize) {
   CLzmaEncProps props;
   LzmaEncProps_Init(&props);
 
@@ -86,7 +86,7 @@ void PSArc::LZMACompress(
 }
 
 size_t PSArc::LZMADecompress(
-  std::vector<byte>& dst, const std::vector<byte>& src, const std::vector<uint32_t>& compressedBlockSizes,
+  std::vector<byte>& dst, const std::vector<byte>& src, const std::vector<size_t>& compressedBlockSizes,
   const std::vector<bool>& blockIsCompressed) {
   SizeT totalOutputSize = 0;
 
@@ -95,7 +95,7 @@ size_t PSArc::LZMADecompress(
   SizeT remainingInput = src.size();
   SizeT inputOffset    = 0;
 
-  uint32_t blockNum = 0;
+  size_t blockNum = 0;
 
   ELzmaStatus lzmaStatus;
 
@@ -140,7 +140,7 @@ size_t PSArc::LZMADecompress(
     }
     else {
       // This block is not compressed
-      uint32_t sizeOfBlock = (blockNum < blockIsCompressed.size()) ? compressedBlockSizes[blockNum] : remainingInput;
+      size_t sizeOfBlock = (blockNum < blockIsCompressed.size()) ? compressedBlockSizes[blockNum] : remainingInput;
 
       totalOutputSize += sizeOfBlock;
       dst.resize(totalOutputSize);

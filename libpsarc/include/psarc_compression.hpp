@@ -8,10 +8,10 @@
 namespace PSArc {
 
 void LZMACompress(
-  std::vector<byte>& dst, const std::vector<byte>& src, std::vector<uint32_t>& compressedBlockSizes, uint32_t maxUncompressedBlockSize,
-  uint32_t maxCompressedBlockSize);
+  std::vector<byte>& dst, const std::vector<byte>& src, std::vector<size_t>& compressedBlockSizes, size_t maxUncompressedBlockSize,
+  size_t maxCompressedBlockSize);
 size_t LZMADecompress(
-  std::vector<byte>& dst, const std::vector<byte>& src, const std::vector<uint32_t>& compressedBlockSizes,
+  std::vector<byte>& dst, const std::vector<byte>& src, const std::vector<size_t>& compressedBlockSizes,
   const std::vector<bool>& blockIsCompressed);
 
 }  // namespace PSArc

@@ -30,12 +30,12 @@ public:
 
 struct FileData {
   std::vector<byte> bytes;
-  std::vector<uint32_t> compressedBlockSizes;
+  std::vector<size_t> compressedBlockSizes;
   std::vector<bool> blockIsCompressed;
-  CompressionType compressionType   = CompressionType::PSARC_COMPRESSION_TYPE_NONE;
-  uint32_t uncompressedMaxBlockSize = 0;
-  uint32_t uncompressedTotalSize    = 0;
-  uint32_t compressedMaxBlockSize   = 0;
+  CompressionType compressionType = CompressionType::PSARC_COMPRESSION_TYPE_NONE;
+  size_t uncompressedMaxBlockSize = 0;
+  size_t uncompressedTotalSize    = 0;
+  size_t compressedMaxBlockSize   = 0;
 
   void Compress(FileData& dst);
   void Decompress(FileData& dst);
@@ -73,7 +73,7 @@ public:
   const byte* GetUncompressedBytes();
   void ClearCompressedBytes();
   void ClearUncompressedBytes();
-  void Compress(CompressionType type, uint32_t blockSize);
+  void Compress(CompressionType type, size_t blockSize);
   void Decompress();
   /* Returns the size of the uncompressed file. Note that this may cause file loads or decompression calls. */
   size_t GetUncompressedSize() const noexcept;
@@ -81,7 +81,7 @@ public:
   size_t GetCompressedSize();
   bool IsUncompressedSizeAvailable() const noexcept;
   bool IsCompressedSizeAvailable() const noexcept;
-  std::vector<uint32_t>& GetCompressedBlockSizes();
+  std::vector<size_t>& GetCompressedBlockSizes();
 
   std::filesystem::path path;
   bool operator==(const File& rhs) {

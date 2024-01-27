@@ -1,28 +1,25 @@
 #include "psarc_memory.hpp"
 
-static std::ios_base::seekdir SeekTypeToSeekDir(PSArc::SeekType type) {
+static std::ios::seekdir SeekTypeToSeekDir(PSArc::SeekType type) {
   switch (type) {
     case PSArc::SeekType::PSARC_SEEK_TYPE_START:
     default:
-      return std::ios_base::seekdir::_S_beg;
+      return std::ios::beg;
     case PSArc::SeekType::PSARC_SEEK_TYPE_CURRENT:
-      return std::ios_base::seekdir::_S_cur;
+      return std::ios::cur;
     case PSArc::SeekType::PSARC_SEEK_TYPE_END:
-      return std::ios_base::seekdir::_S_end;
+      return std::ios::end;
   }
 }
 
-PSArc::FileHandle::FileHandle(std::string path)
-  : fileStream(path.data(), std::ios_base::openmode::_S_in | std::ios_base::openmode::_S_out | std::ios_base::openmode::_S_bin) {
+PSArc::FileHandle::FileHandle(std::string path) : fileStream(path.data(), std::ios::in | std::ios::out | std::ios::binary) {
   if (!this->fileStream.fail()) {
     this->validFileStream = true;
   }
 }
 
 PSArc::FileHandle::FileHandle(std::filesystem::path path, bool overrideExistingFile)
-  : fileStream(
-    path, (overrideExistingFile ? std::ios_base::openmode::_S_trunc | std::ios_base::openmode::_S_in : std::ios_base::openmode::_S_in)
-            | std::ios_base::openmode::_S_out | std::ios_base::openmode::_S_bin) {
+  : fileStream(path, (overrideExistingFile ? std::ios::trunc | std::ios::in : std::ios::in) | std::ios::out | std::ios::binary) {
   // On failure, create the directories and try again.
   if (this->fileStream.fail()) {
     std::filesystem::path dirPath(path);
@@ -31,9 +28,7 @@ PSArc::FileHandle::FileHandle(std::filesystem::path path, bool overrideExistingF
     std::filesystem::create_directories(dirPath);
 
     this->fileStream.clear();
-    this->fileStream.open(
-      path, (overrideExistingFile ? std::ios_base::openmode::_S_trunc | std::ios_base::openmode::_S_in : std::ios_base::openmode::_S_in)
-              | std::ios_base::openmode::_S_out | std::ios_base::openmode::_S_bin);
+    this->fileStream.open(path, (overrideExistingFile ? std::ios::trunc | std::ios::in : std::ios::in) | std::ios::out | std::ios::binary);
   }
 
   if (!this->fileStream.fail()) {
