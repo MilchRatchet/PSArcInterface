@@ -27,14 +27,14 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCI_BUILD=ON -DPSARC_CL_RELEASE_BUILD_VERSION=${{ github.ref }}
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Release
       uses: ncipollo/release-action@a8aa04e74a11445773cf6821f9c8d2a5b317cb1f
       with:
         name: ${{ github.ref }}
         tag: ${{ github.ref }}
-        artifacts: build/psarc-cl/psarc-cl*
+        artifacts: ${{ matrix.os == 'ubuntu-latest' && 'build/psarc-cl/psarc-cl' || 'build/psarc-cl/Release/psarc-cl.exe' }}
         allowUpdates: false
         draft: true
         omitBodyDuringUpdate: false
