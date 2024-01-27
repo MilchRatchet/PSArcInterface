@@ -3,4 +3,4 @@
 	url = https://github.com/madler/zlib.git
 [submodule "libpsarc/hash/md5-c"]
 	path = libpsarc/hash/md5-c
-	url = https://github.com/Zunawe/md5-c.git
+	url = https://github.com/MilchRatchet/md5-c.git
