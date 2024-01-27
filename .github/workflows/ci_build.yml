@@ -34,11 +34,12 @@ jobs:
         name: ${{ github.ref }}
         tag: 'unstable'
         artifacts: build/psarc-cl/psarc-cl*
-        allowUpdates: false
-        omitBodyDuringUpdate: false
-        omitDraftDuringUpdate: false
-        omitNameDuringUpdate: false
-        omitPrereleaseDuringUpdate: false
+        allowUpdates: true
+        draft: false
+        omitBodyDuringUpdate: true
+        omitDraftDuringUpdate: true
+        omitNameDuringUpdate: true
+        omitPrereleaseDuringUpdate: true
         prerelease: true
         replacesArtifacts: true
         skipIfReleaseExists: false
