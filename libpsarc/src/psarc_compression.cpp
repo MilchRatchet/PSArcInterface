@@ -1,7 +1,7 @@
 #include "psarc_compression.hpp"
 
 #include <cstring>
-#include <exception>
+#include <iostream>
 
 #include "LzmaDec.h"
 #include "LzmaEnc.h"
@@ -35,7 +35,8 @@ void PSArc::LZMACompress(
   SizeT uncompressedSize = src.size();
 
   if (maxUncompressedBlockSize == 0) {
-    throw std::exception();
+    std::cout << "Fatal Error in compression: maxUncompressedBlockSize was 0." << std::endl;
+    return;
   }
 
   SizeT totalCompressedSize = 0;
@@ -64,7 +65,8 @@ void PSArc::LZMACompress(
     }
     else {
       // Probably wanna avoid exceptions and use flags instead.
-      throw std::exception();
+      std::cout << "Fatal Error in compression: Unhandled LZMA error code (" << lzmaStatus << ")." << std::endl;
+      return;
     }
     compressedBlockSize = compressedOutputSize + LZMA_HEADER_SIZE;
 
@@ -100,7 +102,8 @@ size_t PSArc::LZMADecompress(
   while (remainingInput > 0) {
     if (remainingInput < LZMA_HEADER_SIZE) {
       // What should we do? This is clearly not a valid LZMA encoded string.
-      throw std::exception();
+      std::cout << "Fatal Error in decompression: Encountered non LZMA compliant header." << std::endl;
+      return 0;
     }
 
     if (blockIsCompressed[blockNum]) {
@@ -127,7 +130,8 @@ size_t PSArc::LZMADecompress(
 
       if (status != SZ_OK) {
         // What should we do on error?
-        throw std::exception();
+        std::cout << "Fatal Error in decompression: Encountered unhandled LZMA error code (" << status << ")." << std::endl;
+        return 0;
       }
     }
     else {

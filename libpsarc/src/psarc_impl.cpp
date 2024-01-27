@@ -52,14 +52,15 @@ static void writeCompressionType(std::vector<byte>& header, size_t offset, PSArc
       header[offset + 0x02] = 'i';
       header[offset + 0x03] = 'b';
       break;
+    default:
+      std::cout << "Error: Encountered invalid compression type during packing, defaulting to LZMA." << std::endl;
+      [[fallthrough]];
     case PSArc::CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
       header[offset + 0x00] = 'l';
       header[offset + 0x01] = 'z';
       header[offset + 0x02] = 'm';
       header[offset + 0x03] = 'a';
       break;
-    default:
-      throw std::exception();
   }
 }
 
