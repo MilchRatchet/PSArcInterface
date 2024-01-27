@@ -12,9 +12,7 @@ jobs:
     runs-on: ${{ matrix.sys.os }}
     strategy:
       matrix:
-        sys:
-          - { os: windows-latest, shell: pwsh }
-          - { os: ubuntu-latest,  shell: bash }
+        os: [ubuntu-latest, windows-latest]
 
     steps:
     - name: Checkout
@@ -33,7 +31,7 @@ jobs:
       with:
         name: ${{ github.ref }}
         tag: 'unstable'
-        artifacts: ${{ matrix.shell == 'bash' && 'build/psarc-cl/psarc-cl' || 'build/psarc-cl/Release/psarc-cl.exe' }}
+        artifacts: ${{ matrix.os == 'ubuntu-latest' && 'build/psarc-cl/psarc-cl' || 'build/psarc-cl/Release/psarc-cl.exe' }}
         allowUpdates: true
         draft: false
         omitBodyDuringUpdate: true
