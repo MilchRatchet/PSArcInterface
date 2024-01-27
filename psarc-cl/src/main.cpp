@@ -1,11 +1,15 @@
 #include <algorithm>
 #include <iostream>
 
+#include "config.hpp"
 #include "pack.hpp"
 #include "psarc.hpp"
 #include "unpack.hpp"
 
 int main(int argc, char* argv[]) {
+  std::cout << "PSArc-cl - " << PSARC_CL_VERSION_DATE << " (" << PSARC_CL_BRANCH_NAME << " " << PSARC_CL_VERSION_HASH << ")" << std::endl;
+  std::cout << PSARC_CL_OS << " " << PSARC_CL_COMPILER << std::endl;
+
   if (argc != 4 && argc != 1) {
     std::cout << "OVERVIEW: psarc-cl PSArc Interfacing Commandline Executable" << std::endl;
     std::cout << std::endl;
