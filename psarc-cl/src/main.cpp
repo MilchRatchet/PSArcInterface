@@ -6,7 +6,7 @@
 #include "unpack.hpp"
 
 int main(int argc, char* argv[]) {
-  if (argc != 4) {
+  if (argc != 4 && argc != 1) {
     std::cout << "OVERVIEW: psarc-cl PSArc Interfacing Commandline Executable" << std::endl;
     std::cout << std::endl;
 #ifdef WIN32
@@ -21,9 +21,9 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  std::string modeString(argv[1]);
-  std::string inputString(argv[2]);
-  std::string outputString(argv[3]);
+  std::string modeString((argc == 1) ? "unpack" : argv[1]);
+  std::string inputString((argc == 1) ? "./PS3arc.psarc" : argv[2]);
+  std::string outputString((argc == 1) ? "./PSArcContent" : argv[3]);
 
   bool isPackMode   = modeString.compare("pack") == 0;
   bool isUnpackMode = modeString.compare("unpack") == 0;

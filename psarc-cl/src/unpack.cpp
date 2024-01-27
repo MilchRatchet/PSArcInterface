@@ -29,8 +29,8 @@ int UnpackPSArc(std::string& input, std::string& output) {
   if (outputPath.generic_string().back() != '/')
     outputPath += '/';
 
-  if (!std::filesystem::is_directory(outputPath)) {
-    std::cout << "Output path is not a directory" << std::endl;
+  if (!std::filesystem::is_directory(outputPath) && !std::filesystem::create_directory(outputPath)) {
+    std::cout << "Output path \"" << outputPath << "\" is not a directory and failed to create it." << std::endl;
     return -1;
   }
 
