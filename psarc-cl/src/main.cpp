@@ -7,8 +7,12 @@
 #include "unpack.hpp"
 
 int main(int argc, char* argv[]) {
+#if defined(PSARC_CL_RELEASE_BUILD)
+  std::cout << "PSArc-cl - " << PSARC_CL_RELEASE_BUILD_VERSION << std::endl;
+#else
   std::cout << "PSArc-cl - " << PSARC_CL_VERSION_DATE << " (" << PSARC_CL_BRANCH_NAME << " " << PSARC_CL_VERSION_HASH << ")" << std::endl;
   std::cout << PSARC_CL_OS << " " << PSARC_CL_COMPILER << std::endl;
+#endif
 
   if (argc != 4 && argc != 1) {
     std::cout << "OVERVIEW: psarc-cl PSArc Interfacing Commandline Executable" << std::endl;

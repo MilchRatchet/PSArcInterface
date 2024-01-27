@@ -1,5 +1,7 @@
 #pragma once
 
+#cmakedefine PSARC_CL_RELEASE_BUILD
+#define PSARC_CL_RELEASE_BUILD_VERSION "${PSARC_CL_RELEASE_BUILD_VERSION}"
 #define PSARC_CL_COMPILER  \
   "${CMAKE_C_COMPILER_ID}" \
   " "                      \

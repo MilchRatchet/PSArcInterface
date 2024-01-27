@@ -30,6 +30,12 @@ else()
     message(SEND_ERROR "Failed to find git.")
 endif()
 
+if(DEFINED PSARC_CL_RELEASE_BUILD_VERSION)
+  set(PSARC_CL_RELEASE_BUILD ON)
+else()
+  unset(PSARC_CL_RELEASE_BUILD)
+endif()
+
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in" "${CMAKE_CURRENT_SOURCE_DIR}/src/config.hpp")
 
 add_executable(psarc-cl ${psarc_source})
