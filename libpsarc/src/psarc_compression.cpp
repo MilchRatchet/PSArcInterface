@@ -95,7 +95,7 @@ size_t PSArc::LZMADecompress(
   SizeT remainingInput = src.size();
   SizeT inputOffset    = 0;
 
-  int blockNum = 0;
+  uint32_t blockNum = 0;
 
   ELzmaStatus lzmaStatus;
 
@@ -106,7 +106,11 @@ size_t PSArc::LZMADecompress(
       return 0;
     }
 
-    if (blockIsCompressed[blockNum]) {
+    // When there is no block information, we simply will have no idea but we can simply guess that it must be the last block and that it is
+    // not compressed.
+    bool isCompressed = (blockNum < blockIsCompressed.size()) ? blockIsCompressed[blockNum] : false;
+
+    if (isCompressed) {
       SizeT uncompressedSize;
       std::memcpy(&uncompressedSize, src.data() + inputOffset + 5, 8);
 
@@ -136,7 +140,7 @@ size_t PSArc::LZMADecompress(
     }
     else {
       // This block is not compressed
-      uint32_t sizeOfBlock = compressedBlockSizes[blockNum];
+      uint32_t sizeOfBlock = (blockNum < blockIsCompressed.size()) ? compressedBlockSizes[blockNum] : remainingInput;
 
       totalOutputSize += sizeOfBlock;
       dst.resize(totalOutputSize);
