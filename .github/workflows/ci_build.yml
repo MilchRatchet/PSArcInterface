@@ -33,7 +33,7 @@ jobs:
       with:
         name: ${{ github.ref }}
         tag: 'unstable'
-        artifacts: ${{ matrix.os == 'ubuntu-latest' && 'build/psarc-cl/psarc-cl' || 'build/psarc-cl/Release/psarc-cl.exe' }}
+        artifacts: ${{ matrix.shell == 'bash' && 'build/psarc-cl/psarc-cl' || 'build/psarc-cl/Release/psarc-cl.exe' }}
         allowUpdates: true
         draft: false
         omitBodyDuringUpdate: true
