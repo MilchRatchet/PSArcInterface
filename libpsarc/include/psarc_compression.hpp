@@ -14,4 +14,11 @@ size_t LZMADecompress(
   std::vector<byte>& dst, const std::vector<byte>& src, const std::vector<size_t>& compressedBlockSizes,
   const std::vector<bool>& blockIsCompressed);
 
+void ZLIBCompress(
+  std::vector<byte>& dst, const std::vector<byte>& src, std::vector<size_t>& compressedBlockSizes, size_t maxUncompressedBlockSize,
+  size_t maxCompressedBlockSize);
+size_t ZLIBDecompress(
+  std::vector<byte>& dst, const std::vector<byte>& src, const std::vector<size_t>& compressedBlockSizes,
+  const std::vector<bool>& blockIsCompressed);
+
 }  // namespace PSArc

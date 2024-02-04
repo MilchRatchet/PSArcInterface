@@ -292,6 +292,9 @@ void PSArc::FileData::Compress(FileData& dst) {
     case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
       LZMACompress(dst.bytes, this->bytes, dst.compressedBlockSizes, dst.uncompressedMaxBlockSize, dst.compressedMaxBlockSize);
       break;
+    case CompressionType::PSARC_COMPRESSION_TYPE_ZLIB:
+      ZLIBCompress(dst.bytes, this->bytes, dst.compressedBlockSizes, dst.uncompressedMaxBlockSize, dst.compressedMaxBlockSize);
+      break;
     case CompressionType::PSARC_COMPRESSION_TYPE_NONE:
       dst = *this;
       break;
@@ -304,6 +307,9 @@ void PSArc::FileData::Decompress(FileData& dst) {
   switch (this->compressionType) {
     case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
       dst.uncompressedTotalSize = LZMADecompress(dst.bytes, this->bytes, this->compressedBlockSizes, this->blockIsCompressed);
+      break;
+    case CompressionType::PSARC_COMPRESSION_TYPE_ZLIB:
+      dst.uncompressedTotalSize = ZLIBDecompress(dst.bytes, this->bytes, this->compressedBlockSizes, this->blockIsCompressed);
       break;
     case CompressionType::PSARC_COMPRESSION_TYPE_NONE:
       dst = *this;

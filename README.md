@@ -2,16 +2,13 @@
 
 PSArcInterface is a library for interfacing PlayStation archive (PSArc) files. These archives were commonly used by PS3 games and sometimes by PS Vita and PS4 games. This project contains a C++20 library and a commandline executable.
 
-The library is currently still incomplete with the following features confirmed missing:
-- zlib de-/compression
-- big endian host machine support
-
 ## Confirmed supported games
 
 Archives from the following games have been tested:
-- Ratchet and Clank 1 (NPEA00385) - Unpacking
-- Ratchet and Clank 2 (NPEA00386) - Unpacking
-- Ratchet and Clank 3 (NPEA00387) - Unpacking
+- Ratchet and Clank 1 (NPEA00385)                   - Unpacking
+- Ratchet and Clank 2 (NPEA00386)                   - Unpacking
+- Ratchet and Clank 3 (NPEA00387)                   - Unpacking
+- Ratchet and Clank: A Crack in Time (BCES00511)    - Unpacking
 
 # PSArc-cl
 

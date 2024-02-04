@@ -5,6 +5,7 @@
 
 #include "LzmaDec.h"
 #include "LzmaEnc.h"
+#include "zlib.h"
 
 static void* lzmaAlloc(ISzAllocPtr, size_t size) {
   return new byte[size];
@@ -135,6 +136,124 @@ size_t PSArc::LZMADecompress(
       if (status != SZ_OK) {
         // What should we do on error?
         std::cout << "Fatal Error in decompression: Encountered unhandled LZMA error code (" << status << ")." << std::endl;
+        return 0;
+      }
+    }
+    else {
+      // This block is not compressed
+      size_t sizeOfBlock = (blockNum < blockIsCompressed.size()) ? compressedBlockSizes[blockNum] : remainingInput;
+
+      totalOutputSize += sizeOfBlock;
+      dst.resize(totalOutputSize);
+      std::memcpy(dst.data() + uncompressedOffset, src.data() + inputOffset, sizeOfBlock);
+
+      uncompressedOffset += sizeOfBlock;
+      remainingInput -= sizeOfBlock;
+      inputOffset += sizeOfBlock;
+    }
+
+    blockNum++;
+  }
+
+  return totalOutputSize;
+}
+
+void PSArc::ZLIBCompress(
+  std::vector<byte>& dst, const std::vector<byte>& src, std::vector<size_t>& compressedBlockSizes, size_t maxUncompressedBlockSize,
+  size_t maxCompressedBlockSize) {
+  SizeT uncompressedSize = src.size();
+
+  if (maxUncompressedBlockSize == 0) {
+    std::cout << "Fatal Error in compression: maxUncompressedBlockSize was 0." << std::endl;
+    return;
+  }
+
+  SizeT totalCompressedSize = 0;
+  SizeT totalProcessedSize  = 0;
+
+  compressedBlockSizes.clear();
+
+  while (totalProcessedSize < uncompressedSize) {
+    uLong processSize         = (uLong) std::min((SizeT) maxUncompressedBlockSize, uncompressedSize - totalProcessedSize);
+    uLong compressedBlockSize = (uLong) maxCompressedBlockSize;
+
+    dst.resize(totalCompressedSize + compressedBlockSize);
+
+    int status =
+      compress((Bytef*) (dst.data() + totalCompressedSize), &compressedBlockSize, (Bytef*) (src.data() + totalProcessedSize), processSize);
+
+    if (status == Z_OK) {
+      // All good
+    }
+    else if (status == Z_BUF_ERROR) {
+      // Compression did not reduce file size, hence we store this block uncompressed.
+      std::memcpy(dst.data() + totalCompressedSize, src.data() + totalProcessedSize, processSize);
+    }
+    else {
+      // Probably wanna avoid exceptions and use flags instead.
+      std::cout << "Fatal Error in compression: Unhandled ZLIB error code (" << status << ")." << std::endl;
+      return;
+    }
+
+    compressedBlockSizes.push_back(compressedBlockSize);
+
+    totalCompressedSize += compressedBlockSize;
+    totalProcessedSize += processSize;
+  }
+
+  dst.resize(totalCompressedSize);
+}
+
+size_t PSArc::ZLIBDecompress(
+  std::vector<byte>& dst, const std::vector<byte>& src, const std::vector<size_t>& compressedBlockSizes,
+  const std::vector<bool>& blockIsCompressed) {
+  SizeT totalOutputSize = 0;
+
+  SizeT uncompressedOffset = 0;
+
+  SizeT remainingInput = src.size();
+  SizeT inputOffset    = 0;
+
+  size_t blockNum = 0;
+
+  while (remainingInput > 0) {
+    // When there is no block information, we simply will have no idea but we can simply guess that it must be the last block and that it is
+    // not compressed.
+    bool isCompressed = (blockNum < blockIsCompressed.size()) ? blockIsCompressed[blockNum] : false;
+
+    if (isCompressed) {
+      uLongf processedInput = uLongf(compressedBlockSizes[blockNum]);
+
+      // We don't know the size of the uncompressed block, hence just assume 2x compression and if that wasn't enough,
+      // try again with more memory.
+      SizeT initialTotalOutputSize = totalOutputSize;
+      uLongf uncompressedSize      = processedInput * 2;
+      int status;
+
+      while (true) {
+        totalOutputSize = initialTotalOutputSize + uncompressedSize;
+        dst.resize(totalOutputSize);
+
+        status = uncompress(
+          (Bytef*) (dst.data() + uncompressedOffset), &uncompressedSize, (Bytef*) (src.data() + inputOffset), (uLong) processedInput);
+
+        if (status == Z_BUF_ERROR) {
+          uncompressedSize *= 2;
+        }
+        else {
+          break;
+        }
+      }
+
+      totalOutputSize = initialTotalOutputSize + uncompressedSize;
+      uncompressedOffset += uncompressedSize;
+
+      remainingInput -= processedInput;
+      inputOffset += processedInput;
+
+      if (status != Z_OK) {
+        // What should we do on error?
+        std::cout << "Fatal Error in decompression: Encountered unhandled ZLIB error code (" << status << ")." << std::endl;
         return 0;
       }
     }
