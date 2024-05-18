@@ -8,6 +8,10 @@ static bool isPSArcFile(std::vector<byte>& header) {
   return (header[0] == 'P') && (header[1] == 'S') && (header[2] == 'A') && (header[3] == 'R');
 }
 
+static bool isDSARFile(std::vector<byte>& header) {
+  return (header[0] == 'D') && (header[1] == 'S') && (header[2] == 'A') && (header[3] == 'R');
+}
+
 static void writePSArcMagic(std::vector<byte>& header, size_t offset) {
   header[offset + 0] = 'P';
   header[offset + 1] = 'S';
@@ -229,6 +233,19 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
 
   std::vector<byte> header = std::vector<byte>(0x20);
   this->parsingEndpoint->Read(header.data(), 0x20);
+
+  // Some archives have a DSAR header which contains the offset to the actual PSArc file.
+  if (isDSARFile(header)) {
+    return PSARC_STATUS_ERROR_DSAR_FILE;
+#if 0
+    // TODO: Determine endianness of DSAR files.
+    uint32_t psarcFileStart = readScalar<uint32_t>(header.data(), 0x0C, false);
+
+    // TODO: Figure out why we need 0x02 and if that number has to be determined by something.
+    this->parsingEndpoint->Seek(psarcFileStart + 0x02);
+    this->parsingEndpoint->Read(header.data(), 0x20);
+#endif
+  }
 
   if (!isPSArcFile(header)) {
     return PSARC_STATUS_ERROR_HEADER;

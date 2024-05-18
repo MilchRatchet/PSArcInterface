@@ -16,6 +16,8 @@ const char* PSArc::PSArcStatusToString(PSArc::PSArcStatus status) {
       return "Error due to invalid archive header";
     case PSARC_STATUS_ERROR_INSERT:
       return "Failed to insert file into archive";
+    case PSARC_STATUS_ERROR_DSAR_FILE:
+      return "Archive is contained in a DSAR file which is not supported";
     case PSARC_STATUS_ERROR_MISC:
       return "Miscellaneous error occurred";
     default:
