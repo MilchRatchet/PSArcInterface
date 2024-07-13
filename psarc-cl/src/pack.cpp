@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <syncstream>
 
 #include "psarc.hpp"
 
@@ -69,7 +70,9 @@ int PackPSArc(std::string& input, std::string& output) {
 
   std::cout << RESET_LINE "Packing files into: " << outputPath.generic_string() << std::endl;
   PSArc::PSArcStatus status = handle.Downsync(settings, [currentFileNumber](size_t numFilesPacked, std::string name) -> void {
-    std::cout << RESET_LINE "[" << numFilesPacked << "/" << currentFileNumber << "] " << name;
+    std::stringstream msg;
+    msg << RESET_LINE "[" << numFilesPacked << "/" << currentFileNumber << "] " << name;
+    std::osyncstream(std::cout) << msg.str();
   });
 
   if (status == PSArc::PSARC_STATUS_OK) {

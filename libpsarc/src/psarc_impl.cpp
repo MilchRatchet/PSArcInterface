@@ -1,5 +1,6 @@
 #include "psarc_impl.hpp"
 
+#include <atomic>
 #include <iostream>
 
 #include "md5.h"
@@ -123,9 +124,21 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   uint32_t blockByteCountSize = getBlockByteCountSize(settings.blockSize);
 
-  size_t numFilesCompressed = 0;
-  size_t numBlocks          = 0;
+  size_t numFilesCompressed     = 0;
+  std::atomic<size_t> numBlocks = 0;
+
+  std::vector<File*> files;
+
+  // PSArcHandle iterator is slow and not parallelizable. Hence we first gather all files
+  // and then do compression in parallel.
   for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
+    files.push_back(*it);
+  }
+
+  // Dynamic schedule is important as compression time depends heavily on
+  // file size and can thus vary greatly.
+#pragma omp parallel for schedule(dynamic, 1)
+  for (auto it = files.begin(); it != files.end(); it++) {
     if (callbackFunc)
       callbackFunc(numFilesCompressed++, (*it)->path.generic_string());
 
