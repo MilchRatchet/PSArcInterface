@@ -58,7 +58,7 @@ int UnpackPSArc(std::string& input, std::string& output) {
     currentFileNumber++;
   });
 
-  std::cout << std::endl << "Done." << std::endl;
+  std::cout << RESET_LINE "[" << fileCount << "/" << fileCount << "] Done." << std::endl;
 
   return 0;
 }
