@@ -107,7 +107,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     manifestFileBytes.insert(manifestFileBytes.end(), filePathBytes.begin(), filePathBytes.end());
   }
 
-  this->archiveEndpoint->AddFile(File("/PSArcManifest.bin", manifestFileBytes));
+  this->archiveEndpoint->AddFile(File("PSArcManifest.bin", manifestFileBytes));
 
   size_t tocEntriesCount = this->archiveEndpoint->GetFileCount();
 
@@ -317,9 +317,9 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
   this->parsingEndpoint->Seek(manifest.fileOffset);
 
   PSArc::PSArcFile* manifestFileSource = new PSArcFile(*this, manifest, this->compressionType);
-  this->archiveEndpoint->AddFile(PSArc::File(std::string("/PSArcManifest.bin"), manifestFileSource));
+  this->archiveEndpoint->AddFile(PSArc::File(std::string("PSArcManifest.bin"), manifestFileSource));
 
-  PSArc::File* manifestFile = this->archiveEndpoint->FindFile("/PSArcManifest.bin");
+  PSArc::File* manifestFile = this->archiveEndpoint->FindFile("PSArcManifest.bin");
 
   if (manifestFile != nullptr) {
     const byte* manifestBytes = manifestFile->GetUncompressedBytes();

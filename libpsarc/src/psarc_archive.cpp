@@ -122,7 +122,7 @@ void PSArc::File::Decompress() {
 }
 
 bool PSArc::Archive::AddFile(File file) {
-  if (file.path.generic_string() == "/PSArcManifest.bin") {
+  if (file.path.generic_string() == "PSArcManifest.bin") {
     this->manifest.emplace(file);
     return true;
   }
@@ -173,7 +173,7 @@ bool PSArc::Archive::AddFile(File file) {
 }
 
 PSArc::File* PSArc::Archive::FindFile(std::string name) {
-  if (name == "/PSArcManifest.bin") {
+  if (name == "PSArcManifest.bin") {
     if (!this->manifest.has_value())
       return nullptr;
 
