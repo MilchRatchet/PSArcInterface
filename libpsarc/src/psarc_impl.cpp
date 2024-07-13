@@ -137,14 +137,17 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   // Dynamic schedule is important as compression time depends heavily on
   // file size and can thus vary greatly.
+  // Note: MSVC requires int type for iterator variable so we can't use C++ iterators here.
 #pragma omp parallel for schedule(dynamic, 1)
-  for (auto it = files.begin(); it != files.end(); it++) {
+  for (unsigned int i = 0; i < files.size(); i++) {
+    File* file = files[i];
+
     if (callbackFunc)
-      callbackFunc(numFilesCompressed++, (*it)->path.generic_string());
+      callbackFunc(numFilesCompressed++, file->path.generic_string());
 
-    (*it)->Compress(settings.compressionType, settings.blockSize);
+    file->Compress(settings.compressionType, settings.blockSize);
 
-    std::vector<size_t>& fileBlockSizes = (*it)->GetCompressedBlockSizes();
+    std::vector<size_t>& fileBlockSizes = file->GetCompressedBlockSizes();
     numBlocks += fileBlockSizes.size();
   }
 
