@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.26)
 
-project(PSArcInterface VERSION 1.0 LANGUAGES CXX C)
+project(PSArcInterface VERSION 1.1 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_C_STANDARD 17)
 
 option(CI_BUILD "Public CI Build" OFF)
 
