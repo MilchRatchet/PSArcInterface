@@ -135,11 +135,13 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     files.push_back(*it);
   }
 
+  const int file_count = int(files.size());
+
   // Dynamic schedule is important as compression time depends heavily on
   // file size and can thus vary greatly.
   // Note: MSVC requires int type for iterator variable so we can't use C++ iterators here.
-#pragma omp parallel for schedule(dynamic, 1)
-  for (unsigned int i = 0; i < files.size(); i++) {
+#pragma omp parallel for schedule(dynamic, 1) shared(file_count, files, settings, callbackFunc)
+  for (int i = 0; i < file_count; i++) {
     File* file = files[i];
 
     if (callbackFunc)
