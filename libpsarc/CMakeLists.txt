@@ -7,6 +7,7 @@ file(GLOB LIBPSARC_INCLUDE_FILES "${LIBPSARC_INCLUDE}/*.hpp")
 
 add_subdirectory(compression)
 add_subdirectory(hash)
+add_subdirectory(c_interface)
 
 include(GNUInstallDirs)
 
@@ -106,6 +107,3 @@ install(FILES
 install(FILES ${LIBPSARC_INCLUDE_FILES}
   DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/LibPSArc"
 )
-
-
-
