@@ -47,7 +47,7 @@ public:
   CompressionType compressionType = CompressionType::PSARC_COMPRESSION_TYPE_LZMA;
   uint32_t blockSize              = 65536;
   uint32_t tocEntrySize           = 30;
-  PathType pathType               = PathType::PSARC_PATH_TYPE_RELATIVE;
+  PathType pathType               = PathType::PSARC_PATH_TYPE_ABSOLUTE;
   std::endian endianness          = std::endian::native;
 };
 

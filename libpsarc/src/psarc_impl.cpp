@@ -100,7 +100,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   std::vector<byte> manifestFileBytes;
   for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
-    std::string filePath = (*it)->path.generic_string();
+    std::string filePath = (*it)->GetPathString(settings.pathType);
     filePath += "\n";
 
     std::vector<byte> filePathBytes(filePath.begin(), filePath.end());
@@ -145,7 +145,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     File* file = files[i];
 
     if (callbackFunc)
-      callbackFunc(numFilesCompressed++, file->path.generic_string());
+      callbackFunc(numFilesCompressed++, file->GetPathString(settings.pathType));
 
     file->Compress(settings.compressionType, settings.blockSize);
 
@@ -169,7 +169,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
     if (callbackFunc)
-      callbackFunc(tocEntries.size(), (*it)->path.generic_string());
+      callbackFunc(tocEntries.size(), (*it)->GetPathString(settings.pathType));
 
     std::vector<size_t>& fileBlockSizes = (*it)->GetCompressedBlockSizes();
     const byte* fileCompressedBytes     = (*it)->GetCompressedBytes();

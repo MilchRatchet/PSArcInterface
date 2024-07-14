@@ -288,7 +288,30 @@ std::vector<size_t>& PSArc::File::GetCompressedBlockSizes() {
 }
 
 bool PSArc::File::IsManifest() const noexcept {
-  return this->path.generic_string() == "PSArcManifest.bin";
+  return this->GetPathString(PathType::PSARC_PATH_TYPE_RELATIVE) == "PSArcManifest.bin";
+}
+
+std::string PSArc::File::GetPathString(PathType pathType) const noexcept {
+  std::string filePath = this->path.generic_string();
+
+  switch (pathType) {
+    case PSARC_PATH_TYPE_RELATIVE:
+      if (filePath.front() == '/') {
+        filePath = filePath.substr(1);
+      }
+      break;
+    case PSARC_PATH_TYPE_IGNORECASE:
+      break;
+    case PSARC_PATH_TYPE_ABSOLUTE:
+      if (filePath.front() != '/') {
+        filePath = "/" + filePath;
+      }
+      break;
+    default:
+      break;
+  }
+
+  return filePath;
 }
 
 void PSArc::FileData::Compress(FileData& dst) {

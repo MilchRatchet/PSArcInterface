@@ -83,6 +83,7 @@ public:
   bool IsCompressedSizeAvailable() const noexcept;
   std::vector<size_t>& GetCompressedBlockSizes();
   bool IsManifest() const noexcept;
+  std::string GetPathString(PathType pathType = PathType::PSARC_PATH_TYPE_RELATIVE) const noexcept;
 
   std::filesystem::path path;
   bool operator==(const File& rhs) {
