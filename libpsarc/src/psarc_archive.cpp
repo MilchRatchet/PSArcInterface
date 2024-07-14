@@ -122,7 +122,7 @@ void PSArc::File::Decompress() {
 }
 
 bool PSArc::Archive::AddFile(File file) {
-  if (file.path.generic_string() == "PSArcManifest.bin") {
+  if (file.IsManifest()) {
     this->manifest.emplace(file);
     return true;
   }
@@ -285,6 +285,10 @@ std::vector<size_t>& PSArc::File::GetCompressedBlockSizes() {
   }
 
   return this->compressedBytes.value().compressedBlockSizes;
+}
+
+bool PSArc::File::IsManifest() const noexcept {
+  return this->path.generic_string() == "PSArcManifest.bin";
 }
 
 void PSArc::FileData::Compress(FileData& dst) {

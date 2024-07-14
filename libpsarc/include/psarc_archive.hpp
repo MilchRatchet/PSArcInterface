@@ -82,6 +82,7 @@ public:
   bool IsUncompressedSizeAvailable() const noexcept;
   bool IsCompressedSizeAvailable() const noexcept;
   std::vector<size_t>& GetCompressedBlockSizes();
+  bool IsManifest() const noexcept;
 
   std::filesystem::path path;
   bool operator==(const File& rhs) {

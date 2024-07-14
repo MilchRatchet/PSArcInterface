@@ -178,12 +178,18 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     TocEntry entry = TocEntry(uint32_t(blockOffset), uint64_t((*it)->GetUncompressedSize()), dataOffset);
 
     // Compute MD5 hash
-    MD5Context md5Context;
-    md5Init(&md5Context);
-    md5Update(&md5Context, fileCompressedBytes, fileCompressedBytesSize);
-    md5Finalize(&md5Context);
+    if ((*it)->IsManifest()) {
+      // Manifest seems to have a hash of 0.
+      std::memset(entry.md5Hash, 0, 16);
+    }
+    else {
+      MD5Context md5Context;
+      md5Init(&md5Context);
+      md5Update(&md5Context, fileCompressedBytes, fileCompressedBytesSize);
+      md5Finalize(&md5Context);
 
-    std::memcpy(entry.md5Hash, md5Context.digest, 16);
+      std::memcpy(entry.md5Hash, md5Context.digest, 16);
+    }
 
     tocEntries.push_back(entry);
 
