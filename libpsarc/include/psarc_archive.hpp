@@ -93,7 +93,7 @@ public:
 
 class Directory {
 public:
-  Directory(std::string _name) : name(_name){};
+  Directory(std::string _name) : name(_name) {};
   std::string name;
   std::vector<Directory> subDirectories;
   std::vector<File> files;
@@ -125,7 +125,7 @@ public:
     std::queue<File*> fileQueue;
 
   public:
-    Iterator(){};
+    Iterator() {};
     Iterator(Archive* archive) : dirQueue(), fileQueue() {
       // It is important that the manifest file is iterated over first.
       if (archive->manifest.has_value())
@@ -198,9 +198,9 @@ public:
       return !this->operator==(rhs);
     }
   };
-  Archive() : rootDirectory("root"){};
+  Archive() : rootDirectory("root") {};
   bool AddFile(File file);
-  File* FindFile(std::string name);
+  File* FindFile(std::string name, PathType pathType = PathType::PSARC_PATH_TYPE_RELATIVE);
   size_t GetFileCount() const noexcept;
   void RemoveManifestFile() noexcept {
     this->manifest.reset();

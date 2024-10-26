@@ -95,11 +95,15 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   bool endianMismatch = (std::endian::native != settings.endianness);
 
-  File* manifestFile = this->archiveEndpoint->FindFile(std::string("PSArcManifest.bin"));
+  File* manifestFile = this->archiveEndpoint->FindFile(std::string("PSArcManifest.bin"), this->pathType);
 
   // Rewrite manifest file.
   std::vector<File*> sortedFiles;
   for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
+    // Manifest file is not list in the manifest.
+    if (*it == manifestFile)
+      continue;
+
     sortedFiles.push_back(*it);
   }
 
@@ -113,10 +117,10 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
     uint32_t index = 0;
 
-    while (!fileNames.eof()) {
+    for (uint32_t i = 0; i < sortedFiles.size(); i++) {
       std::getline(fileNames, fileName, '\n');
 
-      File* file = this->archiveEndpoint->FindFile(fileName);
+      File* file = this->archiveEndpoint->FindFile(fileName, this->pathType);
 
       if (file != nullptr) {
         uint32_t originalFileIndex;
@@ -374,7 +378,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
   PSArc::PSArcFile* manifestFileSource = new PSArcFile(*this, manifest, this->compressionType);
   this->archiveEndpoint->AddFile(PSArc::File(std::string("PSArcManifest.bin"), manifestFileSource));
 
-  PSArc::File* manifestFile = this->archiveEndpoint->FindFile("PSArcManifest.bin");
+  PSArc::File* manifestFile = this->archiveEndpoint->FindFile("PSArcManifest.bin", this->pathType);
 
   if (manifestFile != nullptr) {
     const byte* manifestBytes = manifestFile->GetUncompressedBytes();

@@ -172,7 +172,7 @@ bool PSArc::Archive::AddFile(File file) {
   return fileInserted;
 }
 
-PSArc::File* PSArc::Archive::FindFile(std::string name) {
+PSArc::File* PSArc::Archive::FindFile(std::string name, PathType pathType) {
   if (name == "PSArcManifest.bin") {
     if (!this->manifest.has_value())
       return nullptr;
@@ -196,7 +196,7 @@ PSArc::File* PSArc::Archive::FindFile(std::string name) {
       if (it == --path.end()) {
         // Is File
         for (PSArc::File& file : curr.files) {
-          if (file.path == path)
+          if (file.GetPathString(pathType) == path.generic_string())
             return std::addressof(file);
         }
 
