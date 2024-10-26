@@ -95,11 +95,54 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   bool endianMismatch = (std::endian::native != settings.endianness);
 
+  File* manifestFile = this->archiveEndpoint->FindFile(std::string("PSArcManifest.bin"));
+
   // Rewrite manifest file.
+  std::vector<File*> sortedFiles;
+  for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
+    sortedFiles.push_back(*it);
+  }
+
+  // If a manifest file already existed, sort the files according to the original manifest.
+  // Some games require the files to come in a very specific order.
+  if (manifestFile != nullptr) {
+    const byte* manifestBytes = manifestFile->GetUncompressedBytes();
+
+    std::stringstream fileNames((reinterpret_cast<const char*>(manifestBytes)));
+    std::string fileName;
+
+    uint32_t index = 0;
+
+    while (!fileNames.eof()) {
+      std::getline(fileNames, fileName, '\n');
+
+      File* file = this->archiveEndpoint->FindFile(fileName);
+
+      if (file != nullptr) {
+        uint32_t originalFileIndex;
+        for (originalFileIndex = index; originalFileIndex < sortedFiles.size(); originalFileIndex++) {
+          if (sortedFiles[originalFileIndex] == file)
+            break;
+        }
+
+        if (originalFileIndex != sortedFiles.size()) {
+          if (originalFileIndex != index) {
+            sortedFiles[originalFileIndex] = sortedFiles[index];
+            sortedFiles[index]             = file;
+          }
+
+          index++;
+        }
+      }
+    }
+  }
+
+  // Now we can safely remove the manifest file
   this->archiveEndpoint->RemoveManifestFile();
 
+  // Generate new manifest file
   std::vector<byte> manifestFileBytes;
-  for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
+  for (auto it = sortedFiles.begin(); it != sortedFiles.end(); it++) {
     std::string filePath = (*it)->GetPathString(settings.pathType);
     filePath += "\n";
 
@@ -107,6 +150,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     manifestFileBytes.insert(manifestFileBytes.end(), filePathBytes.begin(), filePathBytes.end());
   }
 
+  // Add the new manifest file
   this->archiveEndpoint->AddFile(File("PSArcManifest.bin", manifestFileBytes));
 
   size_t tocEntriesCount = this->archiveEndpoint->GetFileCount();
