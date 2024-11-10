@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <iostream>
+#include <sstream>
 
 #include "md5.h"
 
