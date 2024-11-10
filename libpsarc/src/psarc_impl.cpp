@@ -110,9 +110,9 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   // If a manifest file already existed, sort the files according to the original manifest.
   // Some games require the files to come in a very specific order.
   if (manifestFile != nullptr) {
-    const byte* manifestBytes = manifestFile->GetUncompressedBytes();
+    const std::shared_ptr<std::vector<byte>> manifestBytes = manifestFile->GetUncompressedBytes();
 
-    std::stringstream fileNames((reinterpret_cast<const char*>(manifestBytes)));
+    std::stringstream fileNames((reinterpret_cast<const char*>(manifestBytes->data())));
     std::string fileName;
 
     uint32_t index = 0;
@@ -220,7 +220,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
       callbackFunc(tocEntries.size(), (*it)->GetPathString(settings.pathType));
 
     std::vector<size_t>& fileBlockSizes = (*it)->GetCompressedBlockSizes();
-    const byte* fileCompressedBytes     = (*it)->GetCompressedBytes();
+    const byte* fileCompressedBytes     = (*it)->GetCompressedBytes()->data();
     size_t fileCompressedBytesSize      = (*it)->GetCompressedSize();
 
     TocEntry entry = TocEntry(uint32_t(blockOffset), uint64_t((*it)->GetUncompressedSize()), dataOffset);
@@ -381,9 +381,9 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
   PSArc::File* manifestFile = this->archiveEndpoint->FindFile("PSArcManifest.bin", this->pathType);
 
   if (manifestFile != nullptr) {
-    const byte* manifestBytes = manifestFile->GetUncompressedBytes();
+    const std::shared_ptr<std::vector<byte>> manifestBytes = manifestFile->GetUncompressedBytes();
 
-    std::stringstream fileNames((reinterpret_cast<const char*>(manifestBytes)));
+    std::stringstream fileNames((reinterpret_cast<const char*>(manifestBytes->data())));
     std::string fileName;
 
     for (uint32_t i = 1; i < tocEntries.size(); i++) {

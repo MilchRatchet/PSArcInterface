@@ -69,8 +69,8 @@ public:
   File(std::string name, FileSourceProvider* provider);
   void LoadCompressedBytes(CompressionType preferredType = CompressionType::PSARC_COMPRESSION_TYPE_LZMA);
   void LoadUncompressedBytes();
-  const byte* GetCompressedBytes();
-  const byte* GetUncompressedBytes();
+  const std::shared_ptr<std::vector<byte>> GetCompressedBytes();
+  const std::shared_ptr<std::vector<byte>> GetUncompressedBytes();
   void ClearCompressedBytes();
   void ClearUncompressedBytes();
   void Compress(CompressionType type, size_t blockSize);

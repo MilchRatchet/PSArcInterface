@@ -63,24 +63,22 @@ void PSArc::File::LoadUncompressedBytes() {
     Decompress();
     return;
   }
-
-  this->uncompressedBytes.emplace(std::vector<byte>());
 }
 
-const byte* PSArc::File::GetCompressedBytes() {
+const std::shared_ptr<std::vector<byte>> PSArc::File::GetCompressedBytes() {
   if (!this->compressedBytes.has_value()) {
     LoadCompressedBytes();
   }
 
-  return this->compressedBytes.value().bytes.data();
+  return std::make_shared<std::vector<byte>>(this->compressedBytes.value_or(FileData()).bytes);
 }
 
-const byte* PSArc::File::GetUncompressedBytes() {
+const std::shared_ptr<std::vector<byte>> PSArc::File::GetUncompressedBytes() {
   if (!this->uncompressedBytes.has_value()) {
     LoadUncompressedBytes();
   }
 
-  return this->uncompressedBytes.value().bytes.data();
+  return std::make_shared<std::vector<byte>>(this->uncompressedBytes.value_or(FileData()).bytes);
 }
 
 void PSArc::File::ClearCompressedBytes() {
