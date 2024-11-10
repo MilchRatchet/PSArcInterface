@@ -41,3 +41,16 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in" "${CMAKE_CURRENT_SOUR
 add_executable(psarc-cl ${psarc_source})
 target_link_libraries(psarc-cl LibPSArc::Static)
 target_include_directories(psarc-cl PRIVATE "$<TARGET_PROPERTY:LibPSArc::Static,INTERFACE_INCLUDE_DIRECTORIES>")
+
+# CI binaries are named based on platform
+if(CI_BUILD)
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set_target_properties(psarc-cl PROPERTIES OUTPUT_NAME "psarc-cl-win64")
+  elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set_target_properties(psarc-cl PROPERTIES OUTPUT_NAME "psarc-cl-macos")
+  else()
+    set_target_properties(psarc-cl PROPERTIES OUTPUT_NAME "psarc-cl-linux")
+  endif()
+endif()
+
+
