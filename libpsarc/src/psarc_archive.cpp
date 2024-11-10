@@ -39,8 +39,6 @@ void PSArc::File::LoadCompressedBytes(CompressionType preferredType) {
     Compress(preferredType, this->uncompressedBytes.value().uncompressedMaxBlockSize);
     return;
   }
-
-  this->compressedBytes.emplace(FileData{});
 }
 
 void PSArc::File::LoadUncompressedBytes() {

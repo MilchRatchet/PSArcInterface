@@ -92,7 +92,7 @@ private:
 
 public:
   PSArcFile(PSArcHandle& _psarcHandle, TocEntry _entry, CompressionType _compressionType)
-    : psarcHandle(_psarcHandle), entry(_entry), compressionType(_compressionType){};
+    : psarcHandle(_psarcHandle), entry(_entry), compressionType(_compressionType) {};
   FileData GetData() override;
   CompressionType GetCompressionType() override;
   bool HasUncompressedSize() override;

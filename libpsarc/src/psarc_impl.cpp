@@ -70,6 +70,25 @@ static void writeCompressionType(std::vector<byte>& header, size_t offset, PSArc
   }
 }
 
+static std::vector<std::string> GetStringsFromManifest(std::string s, std::string delimiter, size_t totalSize) {
+  size_t posStart = 0, posEnd, delimLen = delimiter.length();
+  std::string token;
+  std::vector<std::string> res;
+
+  while ((posEnd = s.find(delimiter, posStart)) != std::string::npos) {
+    token    = s.substr(posStart, posEnd - posStart);
+    posStart = posEnd + delimLen;
+    res.push_back(token);
+  }
+
+  res.push_back(s.substr(posStart, totalSize - posStart));
+
+  // Zero terminate the last string.
+  res.back().push_back('\0');
+
+  return res;
+}
+
 PSArc::PSArcHandle::PSArcHandle() {
 }
 
@@ -113,13 +132,13 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   if (manifestFile != nullptr) {
     const std::shared_ptr<std::vector<byte>> manifestBytes = manifestFile->GetUncompressedBytes();
 
-    std::stringstream fileNames((reinterpret_cast<const char*>(manifestBytes->data())));
-    std::string fileName;
+    std::string fileNames                        = std::string(manifestBytes->begin(), manifestBytes->end());
+    const std::vector<std::string> listFileNames = GetStringsFromManifest(fileNames, std::string("\n"), manifestBytes->size());
 
     uint32_t index = 0;
 
     for (uint32_t i = 0; i < sortedFiles.size(); i++) {
-      std::getline(fileNames, fileName, '\n');
+      const std::string& fileName = listFileNames[i];
 
       File* file = this->archiveEndpoint->FindFile(fileName, this->pathType);
 
@@ -220,9 +239,9 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     if (callbackFunc)
       callbackFunc(tocEntries.size(), (*it)->GetPathString(settings.pathType));
 
-    std::vector<size_t>& fileBlockSizes = (*it)->GetCompressedBlockSizes();
-    const byte* fileCompressedBytes     = (*it)->GetCompressedBytes()->data();
-    size_t fileCompressedBytesSize      = (*it)->GetCompressedSize();
+    std::vector<size_t>& fileBlockSizes                          = (*it)->GetCompressedBlockSizes();
+    const std::shared_ptr<std::vector<byte>> fileCompressedBytes = (*it)->GetCompressedBytes();
+    size_t fileCompressedBytesSize                               = (*it)->GetCompressedSize();
 
     TocEntry entry = TocEntry(uint32_t(blockOffset), uint64_t((*it)->GetUncompressedSize()), dataOffset);
 
@@ -234,7 +253,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     else {
       MD5Context md5Context;
       md5Init(&md5Context);
-      md5Update(&md5Context, fileCompressedBytes, fileCompressedBytesSize);
+      md5Update(&md5Context, fileCompressedBytes->data(), fileCompressedBytesSize);
       md5Finalize(&md5Context);
 
       std::memcpy(entry.md5Hash, md5Context.digest, 16);
@@ -242,7 +261,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
     tocEntries.push_back(entry);
 
-    this->serializationEndpoint->Write(fileCompressedBytes, fileCompressedBytesSize);
+    this->serializationEndpoint->Write(fileCompressedBytes->data(), fileCompressedBytesSize);
     dataOffset += fileCompressedBytesSize;
 
     for (size_t i = 0; i < fileBlockSizes.size(); i++) {
@@ -384,11 +403,11 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
   if (manifestFile != nullptr) {
     const std::shared_ptr<std::vector<byte>> manifestBytes = manifestFile->GetUncompressedBytes();
 
-    std::stringstream fileNames((reinterpret_cast<const char*>(manifestBytes->data())));
-    std::string fileName;
+    std::string fileNames                        = std::string(manifestBytes->begin(), manifestBytes->end());
+    const std::vector<std::string> listFileNames = GetStringsFromManifest(fileNames, std::string("\n"), manifestBytes->size());
 
     for (uint32_t i = 1; i < tocEntries.size(); i++) {
-      std::getline(fileNames, fileName, '\n');
+      const std::string& fileName  = listFileNames[i - 1];
       PSArc::PSArcFile* fileSource = new PSArcFile(*this, tocEntries[i], this->compressionType);
       PSArc::File file(fileName, fileSource);
 
