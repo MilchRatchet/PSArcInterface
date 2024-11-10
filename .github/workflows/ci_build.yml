@@ -31,7 +31,7 @@ jobs:
       with:
         name: ${{ github.ref }}
         tag: 'unstable'
-        artifacts: ${{ (matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest') && 'build/psarc-cl/psarc-cl' || 'build/psarc-cl/Release/psarc-cl.exe' }}
+        artifacts: ${{ (matrix.os == 'ubuntu-latest' && 'build/psarc-cl/psarc-cl-linux') || (matrix.os == 'macos-latest' && 'build/psarc-cl/psarc-cl-macos') || 'build/psarc-cl/Release/psarc-cl-win64.exe' }}
         allowUpdates: true
         draft: false
         omitBodyDuringUpdate: true
