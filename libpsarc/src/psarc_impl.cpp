@@ -168,7 +168,8 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   std::vector<byte> manifestFileBytes;
   for (auto it = sortedFiles.begin(); it != sortedFiles.end(); it++) {
     std::string filePath = (*it)->GetPathString(settings.pathType);
-    filePath += "\n";
+    if (std::next(it) != sortedFiles.end())
+      filePath += "\n";
 
     std::vector<byte> filePathBytes(filePath.begin(), filePath.end());
     manifestFileBytes.insert(manifestFileBytes.end(), filePathBytes.begin(), filePathBytes.end());
