@@ -188,6 +188,7 @@ void PSArc::ZLIBCompress(
     else if (status == Z_BUF_ERROR) {
       // Compression did not reduce file size, hence we store this block uncompressed.
       std::memcpy(dst.data() + totalCompressedSize, src.data() + totalProcessedSize, processSize);
+      compressedBlockSize = processSize;
     }
     else {
       // Probably wanna avoid exceptions and use flags instead.
