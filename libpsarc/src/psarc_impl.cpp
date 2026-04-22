@@ -83,9 +83,6 @@ static std::vector<std::string> GetStringsFromManifest(std::string s, std::strin
 
   res.push_back(s.substr(posStart, totalSize - posStart));
 
-  // Zero terminate the last string.
-  res.back().push_back('\0');
-
   return res;
 }
 
@@ -120,7 +117,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   // Rewrite manifest file.
   std::vector<File*> sortedFiles;
   for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
-    // Manifest file is not list in the manifest.
+    // Manifest file is not listed in the manifest.
     if (*it == manifestFile)
       continue;
 
@@ -138,25 +135,25 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     uint32_t index = 0;
 
     for (uint32_t i = 0; i < sortedFiles.size(); i++) {
-      const std::string& fileName = listFileNames[i];
+      File* file = this->archiveEndpoint->FindFile(listFileNames[i], this->pathType);
 
-      File* file = this->archiveEndpoint->FindFile(fileName, this->pathType);
+      // File was listed in original manifest but seems to have been removed.
+      if (file == nullptr)
+        continue;
 
-      if (file != nullptr) {
-        uint32_t originalFileIndex;
-        for (originalFileIndex = index; originalFileIndex < sortedFiles.size(); originalFileIndex++) {
-          if (sortedFiles[originalFileIndex] == file)
-            break;
+      uint32_t originalFileIndex;
+      for (originalFileIndex = index; originalFileIndex < sortedFiles.size(); originalFileIndex++) {
+        if (sortedFiles[originalFileIndex] == file)
+          break;
+      }
+
+      if (originalFileIndex != sortedFiles.size()) {
+        if (originalFileIndex != index) {
+          sortedFiles[originalFileIndex] = sortedFiles[index];
+          sortedFiles[index]             = file;
         }
 
-        if (originalFileIndex != sortedFiles.size()) {
-          if (originalFileIndex != index) {
-            sortedFiles[originalFileIndex] = sortedFiles[index];
-            sortedFiles[index]             = file;
-          }
-
-          index++;
-        }
+        index++;
       }
     }
   }
@@ -196,13 +193,15 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   size_t numFilesCompressed     = 0;
   std::atomic<size_t> numBlocks = 0;
 
+  // Build the ordered file list: manifest first, then sortedFiles.
+  // This must be used for all subsequent loops so that TOC entry indices
+  // match the order recorded in the manifest.
+  File* newManifestFile = this->archiveEndpoint->FindFile(std::string("PSArcManifest.bin"), this->pathType);
   std::vector<File*> files;
-
-  // PSArcHandle iterator is slow and not parallelizable. Hence we first gather all files
-  // and then do compression in parallel.
-  for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
-    files.push_back(*it);
-  }
+  if (newManifestFile != nullptr)
+    files.push_back(newManifestFile);
+  for (File* f : sortedFiles)
+    files.push_back(f);
 
   const int file_count = int(files.size());
 
@@ -236,18 +235,18 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   this->serializationEndpoint->Seek(dataOffset);
 
-  for (auto it = this->archiveEndpoint->begin(); it != this->archiveEndpoint->end(); it++) {
+  for (File* file : files) {
     if (callbackFunc)
-      callbackFunc(tocEntries.size(), (*it)->GetPathString(settings.pathType));
+      callbackFunc(tocEntries.size(), file->GetPathString(settings.pathType));
 
-    std::vector<size_t>& fileBlockSizes                          = (*it)->GetCompressedBlockSizes();
-    const std::shared_ptr<std::vector<byte>> fileCompressedBytes = (*it)->GetCompressedBytes();
-    size_t fileCompressedBytesSize                               = (*it)->GetCompressedSize();
+    std::vector<size_t>& fileBlockSizes                          = file->GetCompressedBlockSizes();
+    const std::shared_ptr<std::vector<byte>> fileCompressedBytes = file->GetCompressedBytes();
+    size_t fileCompressedBytesSize                               = file->GetCompressedSize();
 
-    TocEntry entry = TocEntry(uint32_t(blockOffset), uint64_t((*it)->GetUncompressedSize()), dataOffset);
+    TocEntry entry = TocEntry(uint32_t(blockOffset), uint64_t(file->GetUncompressedSize()), dataOffset);
 
     // Compute MD5 hash
-    if ((*it)->IsManifest()) {
+    if (file->IsManifest()) {
       // Manifest seems to have a hash of 0.
       std::memset(entry.md5Hash, 0, 16);
     }

@@ -180,7 +180,28 @@ PSArc::File* PSArc::Archive::FindFile(std::string name, PathType pathType) {
 
   std::filesystem::path path((name));
 
-  bool parsePath = false;
+  // Normalize the search name to the same form GetPathString produces for the
+  // given pathType, so the leaf comparison is not sensitive to whether the
+  // caller supplied a leading '/' or not.
+  std::string normalizedName = path.generic_string();
+  switch (pathType) {
+    case PSARC_PATH_TYPE_RELATIVE:
+    case PSARC_PATH_TYPE_IGNORECASE:
+      if (!normalizedName.empty() && normalizedName.front() == '/')
+        normalizedName = normalizedName.substr(1);
+      break;
+    case PSARC_PATH_TYPE_ABSOLUTE:
+      if (!normalizedName.empty() && normalizedName.front() != '/')
+        normalizedName = "/" + normalizedName;
+      break;
+    default:
+      break;
+  }
+
+  // If the path starts with "/" (has a root_directory), the first iterator
+  // element is "/" itself — skip it before parsing real components.
+  // If there is no root_directory (truly relative path), start parsing immediately.
+  bool parsePath = path.root_directory().empty();
 
   for (auto it = path.begin(); it != path.end(); it++) {
     auto pathElement            = (*it);
@@ -192,7 +213,7 @@ PSArc::File* PSArc::Archive::FindFile(std::string name, PathType pathType) {
       if (it == --path.end()) {
         // Is File
         for (PSArc::File& file : curr.files) {
-          if (file.GetPathString(pathType) == path.generic_string())
+          if (file.GetPathString(pathType) == normalizedName)
             return std::addressof(file);
         }
 
