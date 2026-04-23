@@ -28,7 +28,14 @@ void PSArc::LZMACompress(
   CLzmaEncProps props;
   LzmaEncProps_Init(&props);
 
-  props.level = 9;
+  props.level      = 9;
+  props.numThreads = 1;
+  props.algo       = 1;  // Fast algo produces much larger output which doesn't match with reference.
+  // Explicitly set dictSize to the block size so the 5-byte props header encodes the correct
+  // dictionary size. Without this, LzmaEncProps_Normalize sets dictSize = 64 MB (level 9 default)
+  // which may or may not be clamped to srcLen before being written to the props bytes depending on
+  // the SDK version.  Reference PSArc LZMA blocks use dictSize == blockSize (typically 65536).
+  props.dictSize = (UInt32) maxUncompressedBlockSize;
 
   SizeT propsSize = 5;
   byte propsEncoded[5];
@@ -53,13 +60,16 @@ void PSArc::LZMACompress(
 
     SizeT compressedOutputSize = compressedBlockSize - LZMA_HEADER_SIZE;
 
+    SizeT actualBlockSize = compressedBlockSize;  // how many bytes are actually written to dst
+
     SRes lzmaStatus = LzmaEncode(
       dst.data() + totalCompressedSize + LZMA_HEADER_SIZE, &compressedOutputSize, src.data() + totalProcessedSize, processSize, &props,
       propsEncoded, &propsSize, 0, nullptr, &lzmaAllocFuncs, &lzmaAllocFuncs);
 
     if (lzmaStatus == SZ_OK) {
       // All good — write the 13-byte LZMA header followed by the compressed payload.
-      compressedBlockSize = compressedOutputSize + LZMA_HEADER_SIZE;
+      actualBlockSize     = compressedOutputSize + LZMA_HEADER_SIZE;
+      compressedBlockSize = actualBlockSize;
 
       std::memcpy(dst.data() + totalCompressedSize, propsEncoded, 5);
 
@@ -70,7 +80,11 @@ void PSArc::LZMACompress(
     else if (lzmaStatus == SZ_ERROR_OUTPUT_EOF) {
       // Compression did not reduce file size, hence we store this block uncompressed (no LZMA header).
       std::memcpy(dst.data() + totalCompressedSize, src.data() + totalProcessedSize, processSize);
-      compressedBlockSize = processSize;
+      // A full block stored uncompressed is signalled by a block table entry of 0.
+      // Partial (last) blocks keep their real size so the reader knows how many bytes to consume.
+      // actualBlockSize always tracks the real bytes written, regardless of the table entry.
+      actualBlockSize     = processSize;
+      compressedBlockSize = (processSize == maxUncompressedBlockSize) ? 0 : processSize;
     }
     else {
       // Probably wanna avoid exceptions and use flags instead.
@@ -80,7 +94,7 @@ void PSArc::LZMACompress(
 
     compressedBlockSizes.push_back(compressedBlockSize);
 
-    totalCompressedSize += compressedBlockSize;
+    totalCompressedSize += actualBlockSize;
     totalProcessedSize += processSize;
   }
 
@@ -102,17 +116,17 @@ size_t PSArc::LZMADecompress(
   ELzmaStatus lzmaStatus;
 
   while (remainingInput > 0) {
-    if (remainingInput < LZMA_HEADER_SIZE) {
-      // What should we do? This is clearly not a valid LZMA encoded string.
-      std::cout << "Fatal Error in decompression: Encountered non LZMA compliant header." << std::endl;
-      return 0;
-    }
-
     // When there is no block information, we simply will have no idea but we can simply guess that it must be the last block and that it is
     // not compressed.
     bool isCompressed = (blockNum < blockIsCompressed.size()) ? blockIsCompressed[blockNum] : false;
 
     if (isCompressed) {
+      if (remainingInput < LZMA_HEADER_SIZE) {
+        // Compressed blocks must have at least a 13-byte LZMA header.
+        std::cout << "Fatal Error in decompression: Encountered non LZMA compliant header." << std::endl;
+        return 0;
+      }
+
       SizeT uncompressedSize;
       std::memcpy(&uncompressedSize, src.data() + inputOffset + 5, 8);
 
@@ -180,16 +194,23 @@ void PSArc::ZLIBCompress(
 
     dst.resize(totalCompressedSize + compressedBlockSize);
 
+    uLong actualBlockSize = compressedBlockSize;  // how many bytes are actually written to dst
+
     int status =
       compress((Bytef*) (dst.data() + totalCompressedSize), &compressedBlockSize, (Bytef*) (src.data() + totalProcessedSize), processSize);
 
     if (status == Z_OK) {
-      // All good
+      // All good; compressedBlockSize was updated by compress() to actual compressed size.
+      actualBlockSize = compressedBlockSize;
     }
     else if (status == Z_BUF_ERROR) {
       // Compression did not reduce file size, hence we store this block uncompressed.
       std::memcpy(dst.data() + totalCompressedSize, src.data() + totalProcessedSize, processSize);
-      compressedBlockSize = processSize;
+      // A full block stored uncompressed is signalled by a block table entry of 0.
+      // Partial (last) blocks keep their real size so the reader knows how many bytes to consume.
+      // actualBlockSize always tracks the real bytes written, regardless of the table entry.
+      actualBlockSize     = processSize;
+      compressedBlockSize = (processSize == (uLong) maxUncompressedBlockSize) ? 0 : processSize;
     }
     else {
       // Probably wanna avoid exceptions and use flags instead.
@@ -199,7 +220,7 @@ void PSArc::ZLIBCompress(
 
     compressedBlockSizes.push_back(compressedBlockSize);
 
-    totalCompressedSize += compressedBlockSize;
+    totalCompressedSize += actualBlockSize;
     totalProcessedSize += processSize;
   }
 
