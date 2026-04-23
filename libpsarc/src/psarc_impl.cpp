@@ -456,13 +456,14 @@ PSArc::FileData PSArc::PSArcFile::GetData() {
     bool blockIsCompressed;
     switch (this->psarcHandle.compressionType) {
       case CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
-        // LZMA has no real magic, 0x5d is very common though. This can and will fail in some cases.
+        // LZMA has no real magic, 0x5d and 0x2c are the most common first bytes of LZMA props.
         // Another heuristic is to make sure that the data is actually smaller than the uncompressed part.
         // However, sometimes compression may lead to no reduction in size which would cause a fail here aswell.
-        blockIsCompressed = output.bytes.data()[outputOffset] == 0x5d && entrySize != maxPossibleUncompressedSize;
+        blockIsCompressed = (output.bytes.data()[outputOffset] == 0x5d || output.bytes.data()[outputOffset] == 0x2c)
+                            && entrySize != maxPossibleUncompressedSize;
         break;
       case CompressionType::PSARC_COMPRESSION_TYPE_ZLIB: {
-        uint16_t zlib_magic = readScalar<uint16_t>(output.bytes.data(), 0x00);
+        uint16_t zlib_magic = readScalar<uint16_t>(output.bytes.data(), outputOffset);
         blockIsCompressed   = zlib_magic == 0x78da || zlib_magic == 0xda78 || zlib_magic == 0x789c || zlib_magic == 0x9c78
                               || zlib_magic == 0x7801 || zlib_magic == 0x0178;
       } break;
