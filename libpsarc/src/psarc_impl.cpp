@@ -221,13 +221,16 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     numBlocks += fileBlockSizes.size();
   }
 
-  size_t tocLength = settings.tocEntrySize * this->archiveEndpoint->GetFileCount() + numBlocks * blockByteCountSize;
+  // tocLength field stores the total size: header (0x20) + TOC entries + block table.
+  size_t tocLength = 0x20 + settings.tocEntrySize * this->archiveEndpoint->GetFileCount() + numBlocks * blockByteCountSize;
   writeScalar<uint32_t>(header.data(), 0x0C, uint32_t(tocLength), endianMismatch);
 
   this->serializationEndpoint->Seek(0);
   this->serializationEndpoint->Write(header.data(), 0x20);
 
-  size_t dataOffset = 0x20 + tocLength;
+  // File data starts immediately after the header + TOC entries + block table,
+  // which is exactly tocLength bytes from the start of the file.
+  size_t dataOffset = tocLength;
 
   std::vector<TocEntry> tocEntries = std::vector<TocEntry>();
   size_t* blockCompressedSizes     = new size_t[numBlocks];
@@ -355,8 +358,10 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
   this->blockSize          = readScalar<uint32_t>(header.data(), 0x18, endianMismatch);
   this->pathType           = static_cast<PathType>(readScalar<uint32_t>(header.data(), 0x1C, endianMismatch));
 
-  std::vector<byte> toc = std::vector<byte>(tocLength);
-  this->parsingEndpoint->Read(toc.data(), tocLength);
+  // tocLength stores: header (0x20) + entries + block table. Subtract the header to get the actual TOC bytes.
+  uint32_t tocActualLength = tocLength - 0x20;
+  std::vector<byte> toc    = std::vector<byte>(tocActualLength);
+  this->parsingEndpoint->Read(toc.data(), tocActualLength);
 
   std::vector<TocEntry> tocEntries = std::vector<TocEntry>();
 
@@ -365,7 +370,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
   }
 
   uint32_t blockByteCountSize = getBlockByteCountSize(blockSize);
-  uint32_t numBlocks          = (tocLength - tocEntrySize * tocEntriesCount) / blockByteCountSize;
+  uint32_t numBlocks          = (tocActualLength - tocEntrySize * tocEntriesCount) / blockByteCountSize;
 
   this->blocks = new size_t[numBlocks];
   switch (blockByteCountSize) {
