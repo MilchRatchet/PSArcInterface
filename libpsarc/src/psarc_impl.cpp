@@ -251,9 +251,11 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
       std::memset(entry.md5Hash, 0, 16);
     }
     else {
+      const std::shared_ptr<std::vector<byte>> fileUncompressedBytes = file->GetUncompressedBytes();
+
       MD5Context md5Context;
       md5Init(&md5Context);
-      md5Update(&md5Context, fileCompressedBytes->data(), fileCompressedBytesSize);
+      md5Update(&md5Context, fileUncompressedBytes->data(), fileUncompressedBytes->size());
       md5Finalize(&md5Context);
 
       std::memcpy(entry.md5Hash, md5Context.digest, 16);

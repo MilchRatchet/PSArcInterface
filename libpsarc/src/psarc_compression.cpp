@@ -58,24 +58,25 @@ void PSArc::LZMACompress(
       propsEncoded, &propsSize, 0, nullptr, &lzmaAllocFuncs, &lzmaAllocFuncs);
 
     if (lzmaStatus == SZ_OK) {
-      // All good
+      // All good — write the 13-byte LZMA header followed by the compressed payload.
+      compressedBlockSize = compressedOutputSize + LZMA_HEADER_SIZE;
+
+      std::memcpy(dst.data() + totalCompressedSize, propsEncoded, 5);
+
+      // This is funky, PSArc LZMA block header requires a uint64_t but LZMA uses size_t which is not necessarily that.
+      // TODO: Header requires little endian, make it so that libpsarc also works on big endian machines.
+      std::memcpy(dst.data() + totalCompressedSize + 5, &processSize, 8);
     }
     else if (lzmaStatus == SZ_ERROR_OUTPUT_EOF) {
-      // Compression did not reduce file size, hence we store this block uncompressed.
-      std::memcpy(dst.data() + totalCompressedSize + LZMA_HEADER_SIZE, src.data() + totalProcessedSize, compressedOutputSize);
+      // Compression did not reduce file size, hence we store this block uncompressed (no LZMA header).
+      std::memcpy(dst.data() + totalCompressedSize, src.data() + totalProcessedSize, processSize);
+      compressedBlockSize = processSize;
     }
     else {
       // Probably wanna avoid exceptions and use flags instead.
       std::cout << "Fatal Error in compression: Unhandled LZMA error code (" << lzmaStatus << ")." << std::endl;
       return;
     }
-    compressedBlockSize = compressedOutputSize + LZMA_HEADER_SIZE;
-
-    std::memcpy(dst.data() + totalCompressedSize, propsEncoded, 5);
-
-    // This is funky, PSArc LZMA block header requires a uint64_t but LZMA uses size_t which is not necessarily that.
-    // TODO: Header requires little endian, make it so that libpsarc also works on big endian machines.
-    std::memcpy(dst.data() + totalCompressedSize + 5, &processSize, 8);
 
     compressedBlockSizes.push_back(compressedBlockSize);
 
