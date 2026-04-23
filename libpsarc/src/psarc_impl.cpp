@@ -81,7 +81,9 @@ static std::vector<std::string> GetStringsFromManifest(std::string s, std::strin
     res.push_back(token);
   }
 
-  res.push_back(s.substr(posStart, totalSize - posStart));
+  std::string last = s.substr(posStart, totalSize - posStart);
+  if (!last.empty())
+    res.push_back(last);
 
   return res;
 }
