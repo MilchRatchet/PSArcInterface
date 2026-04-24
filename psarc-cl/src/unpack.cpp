@@ -1,9 +1,40 @@
+#include <fstream>
 #include <iostream>
 #include <string>
 
 #include "psarc.hpp"
 
 #define RESET_LINE "\r\033[K"
+
+static const char* compressionTypeToString(PSArc::CompressionType ct) {
+  switch (ct) {
+    case PSArc::CompressionType::PSARC_COMPRESSION_TYPE_ZLIB:
+      return "zlib";
+    case PSArc::CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
+      return "lzma";
+    default:
+      return "none";
+  }
+}
+
+static const char* pathTypeToString(PSArc::PathType pt) {
+  switch (pt) {
+    case PSArc::PathType::PSARC_PATH_TYPE_IGNORECASE:
+      return "ignorecase";
+    case PSArc::PathType::PSARC_PATH_TYPE_ABSOLUTE:
+      return "absolute";
+    default:
+      return "relative";
+  }
+}
+
+static const char* endiannessToString(std::endian e) {
+  if (e == std::endian::big)
+    return "big";
+  if (e == std::endian::little)
+    return "little";
+  return "native";
+}
 
 int UnpackPSArc(std::string& input, std::string& output) {
   PSArc::PSArcHandle handle;
@@ -35,6 +66,22 @@ int UnpackPSArc(std::string& input, std::string& output) {
   if (!std::filesystem::is_directory(outputPath) && !std::filesystem::create_directory(outputPath)) {
     std::cout << "Output path \"" << outputPath << "\" is not a directory and failed to create it." << std::endl;
     return -1;
+  }
+
+  // Write archive settings so pack can reproduce the original format
+  {
+    std::filesystem::path settingsPath = outputPath / ".psarc-cl-settings";
+    std::ofstream settingsFile(settingsPath);
+    if (settingsFile.is_open()) {
+      settingsFile << "compressionType=" << compressionTypeToString(handle.compressionType) << "\n";
+      settingsFile << "blockSize=" << handle.blockSize << "\n";
+      settingsFile << "pathType=" << pathTypeToString(handle.pathType) << "\n";
+      settingsFile << "endianness=" << endiannessToString(handle.endianness) << "\n";
+    }
+    else {
+      std::cout << "Warning: could not write .psarc-cl-settings to: " << std::filesystem::absolute(settingsPath).generic_string()
+                << std::endl;
+    }
   }
 
   size_t fileCount         = archive.GetFileCount();
