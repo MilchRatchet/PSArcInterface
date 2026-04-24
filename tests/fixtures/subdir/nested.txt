@@ -1,0 +1,2 @@
+PSArc test fixture — subdir file.
+Line 2 of the subdir file.

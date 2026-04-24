@@ -7,6 +7,7 @@ set(CMAKE_C_STANDARD 17)
 
 option(PSARCINTERFACE_CI_BUILD "Public CI Build" OFF)
 option(PSARCINTERFACE_MULTITHREADING "Build libpsarc with OpenMP" ON)
+option(PSARCINTERFACE_BUILD_TESTS "Build automated tests" OFF)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
@@ -108,3 +109,8 @@ endif()
 
 add_subdirectory(libpsarc)
 add_subdirectory(psarc-cl)
+
+if(PSARCINTERFACE_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif()
