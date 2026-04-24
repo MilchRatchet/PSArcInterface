@@ -65,6 +65,7 @@ public:
   size_t blockSize;
   PathType pathType               = PathType::PSARC_PATH_TYPE_RELATIVE;
   CompressionType compressionType = CompressionType::PSARC_COMPRESSION_TYPE_NONE;
+  std::endian endianness          = std::endian::native;
 
   PSArcHandle();
   ~PSArcHandle() {

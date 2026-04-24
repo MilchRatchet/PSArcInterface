@@ -337,6 +337,8 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
 
   bool endianMismatch = isEndianMismatch(header);
 
+  this->endianness =
+    endianMismatch ? (std::endian::native == std::endian::little ? std::endian::big : std::endian::little) : std::endian::native;
   this->compressionType    = getCompressionType(header.data() + 0x08);
   uint32_t tocLength       = readScalar<uint32_t>(header.data(), 0x0C, endianMismatch);
   uint32_t tocEntrySize    = readScalar<uint32_t>(header.data(), 0x10, endianMismatch);
