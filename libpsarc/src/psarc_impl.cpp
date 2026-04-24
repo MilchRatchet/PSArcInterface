@@ -164,7 +164,17 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   // Add the new manifest file
   this->archiveEndpoint->AddFile(File("PSArcManifest.bin", manifestFileBytes));
 
-  size_t tocEntriesCount = this->archiveEndpoint->GetFileCount();
+  // Build the ordered file list: manifest first, then sortedFiles.
+  // This must be used for all subsequent loops so that TOC entry indices
+  // match the order recorded in the manifest.
+  File* newManifestFile = this->archiveEndpoint->FindFile(std::string("PSArcManifest.bin"), this->pathType);
+  std::vector<File*> files;
+  if (newManifestFile != nullptr)
+    files.push_back(newManifestFile);
+  for (File* f : sortedFiles)
+    files.push_back(f);
+
+  size_t tocEntriesCount = files.size();
 
   std::vector<byte> header = std::vector<byte>(0x20);
 
@@ -181,16 +191,6 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   size_t numFilesCompressed     = 0;
   std::atomic<size_t> numBlocks = 0;
-
-  // Build the ordered file list: manifest first, then sortedFiles.
-  // This must be used for all subsequent loops so that TOC entry indices
-  // match the order recorded in the manifest.
-  File* newManifestFile = this->archiveEndpoint->FindFile(std::string("PSArcManifest.bin"), this->pathType);
-  std::vector<File*> files;
-  if (newManifestFile != nullptr)
-    files.push_back(newManifestFile);
-  for (File* f : sortedFiles)
-    files.push_back(f);
 
   const int file_count = int(files.size());
 
@@ -211,7 +211,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   }
 
   // tocLength field stores the total size: header (0x20) + TOC entries + block table.
-  size_t tocLength = 0x20 + settings.tocEntrySize * this->archiveEndpoint->GetFileCount() + numBlocks * blockByteCountSize;
+  size_t tocLength = 0x20 + settings.tocEntrySize * files.size() + numBlocks * blockByteCountSize;
   writeScalar<uint32_t>(header.data(), 0x0C, uint32_t(tocLength), endianMismatch);
 
   this->serializationEndpoint->Seek(0);

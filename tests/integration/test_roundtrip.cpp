@@ -382,3 +382,67 @@ TEST(RoundTrip, BinaryDataNoCompression) {
   ASSERT_NE(f, nullptr);
   EXPECT_EQ(*f->GetUncompressedBytes(), content);
 }
+
+// ---------------------------------------------------------------------------
+// Regression: TOC header fields must include the manifest entry
+//
+// Previously GetFileCount() excluded the manifest, causing Downsync to write
+// tocEntriesCount and tocLength one short, producing a malformed archive.
+// This test reads those fields directly from the serialized bytes and verifies
+// they account for all files including the manifest.
+// ---------------------------------------------------------------------------
+
+TEST(RoundTrip, TocHeaderIncludesManifestEntry) {
+  const size_t kNumFiles = 3;
+
+  Archive source;
+  for (size_t i = 0; i < kNumFiles; ++i)
+    source.AddFile(File("file_" + std::to_string(i) + ".txt", MakeBytes("content " + std::to_string(i))));
+
+  PSArcSettings settings;
+  settings.compressionType = CompressionType::PSARC_COMPRESSION_TYPE_LZMA;
+  settings.endianness      = std::endian::little;  // native; makes scalar reading trivial
+
+  VectorOutputHandle output;
+  PSArcHandle writer;
+  writer.SetArchive(&source);
+  writer.SetSerializationEndpoint(&output);
+  ASSERT_EQ(writer.Downsync(settings), PSArcStatus::PSARC_STATUS_OK);
+
+  const std::vector<byte>& raw = output.data;
+  ASSERT_GE(raw.size(), 0x20u) << "Serialized archive is shorter than the minimum header size";
+
+  // PSArc header layout (all uint32_t, little-endian here):
+  //   0x00  magic "PSAR"
+  //   0x04  versionMajor (uint16)
+  //   0x06  versionMinor (uint16)
+  //   0x08  compressionType (4 bytes)
+  //   0x0C  tocLength  — header(0x20) + tocEntrySize*tocEntries + blockTable
+  //   0x10  tocEntrySize
+  //   0x14  tocEntriesCount  ← must be kNumFiles + 1 (manifest)
+  //   0x18  blockSize
+  //   0x1C  pathType
+
+  uint32_t tocEntriesCount;
+  std::memcpy(&tocEntriesCount, raw.data() + 0x14, sizeof(uint32_t));
+  EXPECT_EQ(tocEntriesCount, kNumFiles + 1u) << "tocEntriesCount in header does not include the manifest entry";
+
+  uint32_t tocLength;
+  std::memcpy(&tocLength, raw.data() + 0x0C, sizeof(uint32_t));
+
+  uint32_t tocEntrySize;
+  std::memcpy(&tocEntrySize, raw.data() + 0x10, sizeof(uint32_t));
+
+  // Minimum tocLength must accommodate the header + all TOC entries.
+  EXPECT_GE(tocLength, 0x20u + tocEntrySize * tocEntriesCount) << "tocLength in header is too small to hold all TOC entries";
+
+  // The archive must also be parseable — a well-formed tocLength means
+  // Upsync can locate file data correctly.
+  VectorInputHandle input(raw);
+  Archive result;
+  PSArcHandle reader;
+  reader.SetParsingEndpoint(&input);
+  reader.SetArchive(&result);
+  ASSERT_EQ(reader.Upsync(), PSArcStatus::PSARC_STATUS_OK);
+  EXPECT_EQ(result.GetFileCount(), kNumFiles);
+}
