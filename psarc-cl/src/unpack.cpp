@@ -87,6 +87,9 @@ int UnpackPSArc(std::string& input, std::string& output) {
   size_t fileCount         = archive.GetFileCount();
   size_t currentFileNumber = 0;
 
+  // We cannot parallelize this. All PSArcFile sources share a single parsingEndpoint
+  // (the input FileHandle) which is not thread-safe for concurrent Seek/Read.
+
   std::for_each(archive.begin(), archive.end(), [outputPath, fileCount, &currentFileNumber](PSArc::File* file) {
     std::filesystem::path fileOutputPath(outputPath);
     fileOutputPath += file->path.relative_path();

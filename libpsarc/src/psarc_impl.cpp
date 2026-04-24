@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <iostream>
-#include <latch>
 #include <sstream>
 #include <thread>
 
@@ -194,36 +193,38 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   std::atomic<size_t> numBlocks          = 0;
 
 #ifdef LIBPSARC_ENABLE_MULTITHREADING
-  const size_t threadCount = std::max<size_t>(1, std::thread::hardware_concurrency());
+  const size_t threadCount = std::max<size_t>(1u, std::thread::hardware_concurrency());
 #else
   const size_t threadCount = 1;
 #endif
   {
     std::atomic<size_t> workIndex = 0;
-    std::latch done(static_cast<std::ptrdiff_t>(threadCount));
+    std::vector<std::thread> workers;
+    workers.reserve(threadCount);
 
-    for (size_t t = 0; t < threadCount; ++t) {
-      std::jthread([&] {
-        while (true) {
-          const size_t i = workIndex.fetch_add(1, std::memory_order_relaxed);
-          if (i >= files.size())
-            break;
+    auto workerFunc = [&] {
+      while (true) {
+        const size_t i = workIndex.fetch_add(1, std::memory_order_relaxed);
+        if (i >= files.size())
+          break;
 
-          File* file = files[i];
+        File* file = files[i];
 
-          if (callbackFunc)
-            callbackFunc(numFilesCompressed.fetch_add(1, std::memory_order_relaxed), file->GetPathString(settings.pathType));
+        if (callbackFunc)
+          callbackFunc(numFilesCompressed.fetch_add(1, std::memory_order_relaxed), file->GetPathString(settings.pathType));
 
-          file->Compress(settings.compressionType, settings.blockSize);
+        file->Compress(settings.compressionType, settings.blockSize);
 
-          std::vector<size_t>& fileBlockSizes = file->GetCompressedBlockSizes();
-          numBlocks.fetch_add(fileBlockSizes.size(), std::memory_order_relaxed);
-        }
-        done.count_down();
-      }).detach();
-    }
+        std::vector<size_t>& fileBlockSizes = file->GetCompressedBlockSizes();
+        numBlocks.fetch_add(fileBlockSizes.size(), std::memory_order_relaxed);
+      }
+    };
 
-    done.wait();
+    for (size_t t = 0; t < threadCount; ++t)
+      workers.emplace_back(workerFunc);
+
+    for (auto& w : workers)
+      w.join();
   }
 
   // tocLength field stores the total size: header (0x20) + TOC entries + block table.
