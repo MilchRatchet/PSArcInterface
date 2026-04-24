@@ -31,6 +31,9 @@ target_include_directories(Shared PRIVATE
   "$<BUILD_INTERFACE:${MD5_INCLUDE}>"
 )
 target_link_libraries(Shared PUBLIC $<TARGET_NAME:LibPSArc::Headers>)
+if(${PSARCINTERFACE_MULTITHREADING})
+  target_compile_definitions(Shared PRIVATE LIBPSARC_ENABLE_MULTITHREADING)
+endif()
 
 # setup static target
 add_library(Static STATIC ${LIBPSARC_SOURCE} ${LZMA_SOURCE} ${ZLIB_SOURCE} ${MD5_SOURCE})
@@ -46,6 +49,9 @@ target_include_directories(Static PRIVATE
   "$<BUILD_INTERFACE:${MD5_INCLUDE}>"
 )
 target_link_libraries(Static PUBLIC $<TARGET_NAME:LibPSArc::Headers>)
+if(${PSARCINTERFACE_MULTITHREADING})
+  target_compile_definitions(Static PRIVATE LIBPSARC_ENABLE_MULTITHREADING)
+endif()
 
 # install
 set(LIBPSARC_INSTALL_CMAKEDIR_ROOT "${CMAKE_INSTALL_DATADIR}/cmake" CACHE STRING "Root folder where to install LibPSArcConfig.cmake related files")

@@ -2,7 +2,9 @@
 
 #include <atomic>
 #include <iostream>
+#include <latch>
 #include <sstream>
+#include <thread>
 
 #include "md5.h"
 
@@ -188,25 +190,40 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   uint32_t blockByteCountSize = getBlockByteCountSize(settings.blockSize);
 
-  size_t numFilesCompressed     = 0;
-  std::atomic<size_t> numBlocks = 0;
+  std::atomic<size_t> numFilesCompressed = 0;
+  std::atomic<size_t> numBlocks          = 0;
 
-  const int file_count = int(files.size());
+#ifdef LIBPSARC_ENABLE_MULTITHREADING
+  const size_t threadCount = std::max<size_t>(1, std::thread::hardware_concurrency());
+#else
+  const size_t threadCount = 1;
+#endif
+  {
+    std::atomic<size_t> workIndex = 0;
+    std::latch done(static_cast<std::ptrdiff_t>(threadCount));
 
-  // Dynamic schedule is important as compression time depends heavily on
-  // file size and can thus vary greatly.
-  // Note: MSVC requires int type for iterator variable so we can't use C++ iterators here.
-#pragma omp parallel for schedule(dynamic, 1) shared(file_count, files, settings, callbackFunc)
-  for (int i = 0; i < file_count; i++) {
-    File* file = files[i];
+    for (size_t t = 0; t < threadCount; ++t) {
+      std::jthread([&] {
+        while (true) {
+          const size_t i = workIndex.fetch_add(1, std::memory_order_relaxed);
+          if (i >= files.size())
+            break;
 
-    if (callbackFunc)
-      callbackFunc(numFilesCompressed++, file->GetPathString(settings.pathType));
+          File* file = files[i];
 
-    file->Compress(settings.compressionType, settings.blockSize);
+          if (callbackFunc)
+            callbackFunc(numFilesCompressed.fetch_add(1, std::memory_order_relaxed), file->GetPathString(settings.pathType));
 
-    std::vector<size_t>& fileBlockSizes = file->GetCompressedBlockSizes();
-    numBlocks += fileBlockSizes.size();
+          file->Compress(settings.compressionType, settings.blockSize);
+
+          std::vector<size_t>& fileBlockSizes = file->GetCompressedBlockSizes();
+          numBlocks.fetch_add(fileBlockSizes.size(), std::memory_order_relaxed);
+        }
+        done.count_down();
+      }).detach();
+    }
+
+    done.wait();
   }
 
   // tocLength field stores the total size: header (0x20) + TOC entries + block table.
