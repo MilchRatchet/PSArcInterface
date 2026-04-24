@@ -43,7 +43,7 @@ target_link_libraries(psarc-cl LibPSArc::Static)
 target_include_directories(psarc-cl PRIVATE "$<TARGET_PROPERTY:LibPSArc::Static,INTERFACE_INCLUDE_DIRECTORIES>")
 
 # CI binaries are named based on platform
-if(CI_BUILD)
+if(PSARCINTERFACE_CI_BUILD)
   if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set_target_properties(psarc-cl PROPERTIES OUTPUT_NAME "psarc-cl-win64")
   elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
