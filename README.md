@@ -5,23 +5,23 @@ PSArcInterface is a library for interfacing PlayStation archive (PSArc) files. T
 ## Confirmed supported games
 
 Archives from the following games have been tested:
-- Ratchet and Clank 1 (NPEA00385)                   - Unpacking
-- Ratchet and Clank 2 (NPEA00386)                   - Unpacking
-- Ratchet and Clank 3 (NPEA00387)                   - Unpacking
-- Ratchet and Clank: A Crack in Time (BCES00511)    - Unpacking
+- Ratchet and Clank 1 (NPEA00385)
+- Ratchet and Clank 2 (NPEA00386)
+- Ratchet and Clank 3 (NPEA00387)                   - Only Unpacking was tested
+- Ratchet and Clank: A Crack in Time (BCES00511)    - Only Unpacking was tested
 
-# PSArc-cl
+# psarc-cl
 
-PSArc-cl is a commandline executable that allows packing and unpacking of Playstation archive files using LibPSArc. Builds are available for download for Windows and Linux platforms:
+psarc-cl is a commandline executable that allows packing and unpacking of Playstation archive files using LibPSArc. Builds are available for download for Windows and Linux platforms:
 
 - [Release Builds](https://github.com/MilchRatchet/PSArcInterface/releases)
 - [CI Builds (Unstable)](https://github.com/MilchRatchet/PSArcInterface/releases/tag/unstable)
 
 ## Usage
 
-To decompress an archive, put the PSArc-cl executable into the same directory as the archive and start PSArc-cl. The content of the archive will then automatically be extracted.
+To decompress an archive, put the psarc-cl executable into the same directory as the archive and start psarc-cl. The content of the archive will then automatically be extracted.
 
-Alternatively, PSArc-cl can be used through a commandline:
+Alternatively, psarc-cl can be used through a commandline:
 ```
 USAGE: psarc-cl.exe mode input-path output-path
 
