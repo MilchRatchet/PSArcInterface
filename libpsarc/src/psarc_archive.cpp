@@ -140,6 +140,10 @@ bool PSArc::Archive::AddFile(File file) {
     else if (parsePath) {
       if (it == --file.path.end()) {
         // Is File
+        for (const auto& existing : curr.files) {
+          if (existing.path == file.path)
+            return false;
+        }
         curr.files.push_back(file);
         this->fileCount++;
         fileInserted = true;
@@ -246,7 +250,7 @@ PSArc::File* PSArc::Archive::FindFile(std::string name, PathType pathType) {
 }
 
 size_t PSArc::Archive::GetFileCount() const noexcept {
-  return this->fileCount + 1;
+  return this->fileCount;
 }
 
 size_t PSArc::File::GetUncompressedSize() const noexcept {
@@ -344,6 +348,14 @@ void PSArc::FileData::Compress(FileData& dst) {
       break;
     default:
       break;
+  }
+
+  // Populate blockIsCompressed: a compressedBlockSize of 0 signals a full-size
+  // uncompressed block (PSArc convention); all other blocks are compressed.
+  if (dst.compressionType != CompressionType::PSARC_COMPRESSION_TYPE_NONE) {
+    dst.blockIsCompressed.resize(dst.compressedBlockSizes.size());
+    for (size_t i = 0; i < dst.compressedBlockSizes.size(); ++i)
+      dst.blockIsCompressed[i] = (dst.compressedBlockSizes[i] != 0);
   }
 }
 
