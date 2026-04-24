@@ -45,11 +45,11 @@ TEST(Archive, GetFileCountAfterAdd) {
   EXPECT_EQ(archive.GetFileCount(), 2u);
 }
 
-TEST(Archive, DuplicatePathNotAdded) {
+TEST(Archive, DuplicatePathReplacement) {
   Archive archive;
   ASSERT_TRUE(archive.AddFile(File("dup.txt", MakeBytes("first"))));
-  // Adding the same path a second time should fail (returns false).
-  EXPECT_FALSE(archive.AddFile(File("dup.txt", MakeBytes("second"))));
+  // Adding the same path a second time replaces the existing entry (returns true).
+  EXPECT_TRUE(archive.AddFile(File("dup.txt", MakeBytes("second"))));
   EXPECT_EQ(archive.GetFileCount(), 1u);
 }
 
