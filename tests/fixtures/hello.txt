@@ -1,0 +1,2 @@
+Hello from the PSArc test fixture.
+This file is used to verify that pack and unpack round-trips preserve content correctly.
