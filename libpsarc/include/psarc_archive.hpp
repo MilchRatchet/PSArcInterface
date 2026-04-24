@@ -200,7 +200,7 @@ public:
   };
   Archive() : rootDirectory("root") {};
   bool AddFile(File file);
-  File* FindFile(std::string name, PathType pathType = PathType::PSARC_PATH_TYPE_RELATIVE);
+  File* FindFile(const std::string& name, PathType pathType = PathType::PSARC_PATH_TYPE_RELATIVE);
   size_t GetFileCount() const noexcept;
   void RemoveManifestFile() noexcept {
     this->manifest.reset();

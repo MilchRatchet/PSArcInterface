@@ -140,11 +140,15 @@ bool PSArc::Archive::AddFile(File file) {
     else if (parsePath) {
       if (it == --file.path.end()) {
         // Is File
-        for (const auto& existing : curr.files) {
-          if (existing.path == file.path)
-            return false;
+        const std::string fileRelPath = file.GetPathString(PSARC_PATH_TYPE_RELATIVE);
+        for (PSArc::File& existing : curr.files) {
+          if (existing.GetPathString(PSARC_PATH_TYPE_RELATIVE) == fileRelPath) {
+            existing     = std::move(file);
+            fileInserted = true;
+            return true;
+          }
         }
-        curr.files.push_back(file);
+        curr.files.push_back(std::move(file));
         this->fileCount++;
         fileInserted = true;
         break;
@@ -172,7 +176,7 @@ bool PSArc::Archive::AddFile(File file) {
   return fileInserted;
 }
 
-PSArc::File* PSArc::Archive::FindFile(std::string name, PathType pathType) {
+PSArc::File* PSArc::Archive::FindFile(const std::string& name, PathType pathType) {
   if (name == "PSArcManifest.bin") {
     if (!this->manifest.has_value())
       return nullptr;

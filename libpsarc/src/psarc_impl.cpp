@@ -70,9 +70,8 @@ static std::vector<std::string> GetStringsFromManifest(const std::string& s) {
     posStart = posEnd + 1;
   }
 
-  std::string last = s.substr(posStart, s.size() - posStart);
-  if (!last.empty())
-    res.push_back(last);
+  if (posStart < s.size())
+    res.push_back(s.substr(posStart));
 
   return res;
 }
@@ -125,7 +124,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
     uint32_t index = 0;
 
-    for (uint32_t i = 0; i < sortedFiles.size(); i++) {
+    for (uint32_t i = 0; i < listFileNames.size(); i++) {
       File* file = this->archiveEndpoint->FindFile(listFileNames[i], this->pathType);
 
       // File was listed in original manifest but seems to have been removed.
