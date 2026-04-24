@@ -7,18 +7,15 @@
 #include "md5.h"
 
 static bool isPSArcFile(std::vector<byte>& header) {
-  return (header[0] == 'P') && (header[1] == 'S') && (header[2] == 'A') && (header[3] == 'R');
+  return std::memcmp(header.data(), "PSAR", 4) == 0;
 }
 
 static bool isDSARFile(std::vector<byte>& header) {
-  return (header[0] == 'D') && (header[1] == 'S') && (header[2] == 'A') && (header[3] == 'R');
+  return std::memcmp(header.data(), "DSAR", 4) == 0;
 }
 
-static void writePSArcMagic(std::vector<byte>& header, size_t offset) {
-  header[offset + 0] = 'P';
-  header[offset + 1] = 'S';
-  header[offset + 2] = 'A';
-  header[offset + 3] = 'R';
+static void writePSArcMagic(std::vector<byte>& header) {
+  std::memcpy(header.data(), "PSAR", 4);
 }
 
 static bool isEndianMismatch(std::vector<byte>& header) {
@@ -53,35 +50,27 @@ static PSArc::CompressionType getCompressionType(byte* ptr) {
 static void writeCompressionType(std::vector<byte>& header, size_t offset, PSArc::CompressionType type) {
   switch (type) {
     case PSArc::CompressionType::PSARC_COMPRESSION_TYPE_ZLIB:
-      header[offset + 0x00] = 'z';
-      header[offset + 0x01] = 'l';
-      header[offset + 0x02] = 'i';
-      header[offset + 0x03] = 'b';
+      std::memcpy(header.data() + offset, "zlib", 4);
       break;
     default:
       std::cout << "Error: Encountered invalid compression type during packing, defaulting to LZMA." << std::endl;
       [[fallthrough]];
     case PSArc::CompressionType::PSARC_COMPRESSION_TYPE_LZMA:
-      header[offset + 0x00] = 'l';
-      header[offset + 0x01] = 'z';
-      header[offset + 0x02] = 'm';
-      header[offset + 0x03] = 'a';
+      std::memcpy(header.data() + offset, "lzma", 4);
       break;
   }
 }
 
-static std::vector<std::string> GetStringsFromManifest(std::string s, std::string delimiter, size_t totalSize) {
-  size_t posStart = 0, posEnd, delimLen = delimiter.length();
-  std::string token;
+static std::vector<std::string> GetStringsFromManifest(const std::string& s) {
   std::vector<std::string> res;
+  size_t posStart = 0, posEnd;
 
-  while ((posEnd = s.find(delimiter, posStart)) != std::string::npos) {
-    token    = s.substr(posStart, posEnd - posStart);
-    posStart = posEnd + delimLen;
-    res.push_back(token);
+  while ((posEnd = s.find('\n', posStart)) != std::string::npos) {
+    res.push_back(s.substr(posStart, posEnd - posStart));
+    posStart = posEnd + 1;
   }
 
-  std::string last = s.substr(posStart, totalSize - posStart);
+  std::string last = s.substr(posStart, s.size() - posStart);
   if (!last.empty())
     res.push_back(last);
 
@@ -132,7 +121,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     const std::shared_ptr<std::vector<byte>> manifestBytes = manifestFile->GetUncompressedBytes();
 
     std::string fileNames                        = std::string(manifestBytes->begin(), manifestBytes->end());
-    const std::vector<std::string> listFileNames = GetStringsFromManifest(fileNames, std::string("\n"), manifestBytes->size());
+    const std::vector<std::string> listFileNames = GetStringsFromManifest(fileNames);
 
     uint32_t index = 0;
 
@@ -168,10 +157,8 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   for (auto it = sortedFiles.begin(); it != sortedFiles.end(); it++) {
     std::string filePath = (*it)->GetPathString(settings.pathType);
     if (std::next(it) != sortedFiles.end())
-      filePath += "\n";
-
-    std::vector<byte> filePathBytes(filePath.begin(), filePath.end());
-    manifestFileBytes.insert(manifestFileBytes.end(), filePathBytes.begin(), filePathBytes.end());
+      filePath += '\n';
+    manifestFileBytes.insert(manifestFileBytes.end(), filePath.begin(), filePath.end());
   }
 
   // Add the new manifest file
@@ -181,7 +168,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
 
   std::vector<byte> header = std::vector<byte>(0x20);
 
-  writePSArcMagic(header, 0x00);
+  writePSArcMagic(header);
   writeScalar<uint16_t>(header.data(), 0x04, settings.versionMajor, endianMismatch);
   writeScalar<uint16_t>(header.data(), 0x06, settings.versionMinor, endianMismatch);
   writeCompressionType(header, 0x08, settings.compressionType);
@@ -234,9 +221,9 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
   // which is exactly tocLength bytes from the start of the file.
   size_t dataOffset = tocLength;
 
-  std::vector<TocEntry> tocEntries = std::vector<TocEntry>();
-  size_t* blockCompressedSizes     = new size_t[numBlocks];
-  size_t blockOffset               = 0;
+  std::vector<TocEntry> tocEntries;
+  std::vector<size_t> blockCompressedSizes(numBlocks);
+  size_t blockOffset = 0;
 
   this->serializationEndpoint->Seek(dataOffset);
 
@@ -285,31 +272,28 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Downsync(PSArcSettings settings, std::fun
     this->serializationEndpoint->Write(tocBytes.data(), settings.tocEntrySize);
   }
 
-  byte* blockCompressedSizesBytes = new byte[blockByteCountSize * numBlocks];
+  std::vector<byte> blockCompressedSizesBytes(blockByteCountSize * numBlocks);
 
   switch (blockByteCountSize) {
     case 2:
       for (size_t i = 0; i < numBlocks; i++) {
-        writeScalar<uint16_t>(blockCompressedSizesBytes, i * blockByteCountSize, uint16_t(blockCompressedSizes[i]), endianMismatch);
+        writeScalar<uint16_t>(blockCompressedSizesBytes.data(), i * blockByteCountSize, uint16_t(blockCompressedSizes[i]), endianMismatch);
       }
       break;
     case 3:
       for (size_t i = 0; i < numBlocks; i++) {
         writeScalar<uint24_t>(
-          blockCompressedSizesBytes, i * blockByteCountSize, uint24_t::From(uint32_t(blockCompressedSizes[i])), endianMismatch);
+          blockCompressedSizesBytes.data(), i * blockByteCountSize, uint24_t::From(uint32_t(blockCompressedSizes[i])), endianMismatch);
       }
       break;
     case 4:
       for (size_t i = 0; i < numBlocks; i++) {
-        writeScalar<uint32_t>(blockCompressedSizesBytes, i * blockByteCountSize, uint32_t(blockCompressedSizes[i]), endianMismatch);
+        writeScalar<uint32_t>(blockCompressedSizesBytes.data(), i * blockByteCountSize, uint32_t(blockCompressedSizes[i]), endianMismatch);
       }
       break;
   }
 
-  this->serializationEndpoint->Write(blockCompressedSizesBytes, blockByteCountSize * numBlocks);
-
-  delete[] blockCompressedSizes;
-  delete[] blockCompressedSizesBytes;
+  this->serializationEndpoint->Write(blockCompressedSizesBytes.data(), blockCompressedSizesBytes.size());
 
   return PSARC_STATUS_OK;
 }
@@ -365,7 +349,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
   std::vector<byte> toc    = std::vector<byte>(tocActualLength);
   this->parsingEndpoint->Read(toc.data(), tocActualLength);
 
-  std::vector<TocEntry> tocEntries = std::vector<TocEntry>();
+  std::vector<TocEntry> tocEntries;
 
   for (uint32_t i = 0; i < tocEntriesCount; i++) {
     tocEntries.push_back(TocEntry(toc.data(), i * tocEntrySize, endianMismatch));
@@ -414,7 +398,7 @@ PSArc::PSArcStatus PSArc::PSArcHandle::Upsync() {
     const std::shared_ptr<std::vector<byte>> manifestBytes = manifestFile->GetUncompressedBytes();
 
     std::string fileNames                        = std::string(manifestBytes->begin(), manifestBytes->end());
-    const std::vector<std::string> listFileNames = GetStringsFromManifest(fileNames, std::string("\n"), manifestBytes->size());
+    const std::vector<std::string> listFileNames = GetStringsFromManifest(fileNames);
 
     for (uint32_t i = 1; i < tocEntries.size(); i++) {
       const std::string& fileName  = listFileNames[i - 1];
