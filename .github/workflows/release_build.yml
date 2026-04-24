@@ -32,7 +32,7 @@ jobs:
       with:
         name: ${{ github.ref }}
         tag: ${{ github.ref }}
-        artifacts: ${{ matrix.os == 'ubuntu-latest' && 'build/psarc-cl/psarc-cl' || 'build/psarc-cl/Release/psarc-cl.exe' }}
+        artifacts: ${{ (matrix.os == 'ubuntu-latest' && 'build/psarc-cl/psarc-cl-linux') || (matrix.os == 'macos-latest' && 'build/psarc-cl/psarc-cl-macos') || 'build/psarc-cl/Release/psarc-cl-win64.exe' }}
         allowUpdates: true
         draft: true
         omitBodyDuringUpdate: false
