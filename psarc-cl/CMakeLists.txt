@@ -42,15 +42,26 @@ add_executable(psarc-cl ${psarc_source})
 target_link_libraries(psarc-cl LibPSArc::Static)
 target_include_directories(psarc-cl PRIVATE "$<TARGET_PROPERTY:LibPSArc::Static,INTERFACE_INCLUDE_DIRECTORIES>")
 
-# CI binaries are named based on platform
-if(PSARCINTERFACE_CI_BUILD)
-  if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    set_target_properties(psarc-cl PROPERTIES OUTPUT_NAME "psarc-cl-win64")
-  elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set_target_properties(psarc-cl PROPERTIES OUTPUT_NAME "psarc-cl-macos")
-  else()
-    set_target_properties(psarc-cl PROPERTIES OUTPUT_NAME "psarc-cl-linux")
-  endif()
+# Determine the platform-specific CI output name
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+  set(PSARC_CL_CI_BUILD_OUTPUT_NAME "psarc-cl-win64")
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  set(PSARC_CL_CI_BUILD_OUTPUT_NAME "psarc-cl-macos")
+else()
+  set(PSARC_CL_CI_BUILD_OUTPUT_NAME "psarc-cl-linux")
 endif()
+
+# CI binaries are named based on platform; clean up the stale alternative on each build
+if(PSARCINTERFACE_CI_BUILD)
+  set_target_properties(psarc-cl PROPERTIES OUTPUT_NAME "${PSARC_CL_CI_BUILD_OUTPUT_NAME}")
+  set(PSARC_CL_STALE_NAME "psarc-cl")
+else()
+  set(PSARC_CL_STALE_NAME "${PSARC_CL_CI_BUILD_OUTPUT_NAME}")
+endif()
+
+add_custom_command(TARGET psarc-cl POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E remove -f "$<TARGET_FILE_DIR:psarc-cl>/${PSARC_CL_STALE_NAME}${CMAKE_EXECUTABLE_SUFFIX}"
+  COMMENT "Cleaning up stale executable: ${PSARC_CL_STALE_NAME}"
+)
 
 
