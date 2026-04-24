@@ -170,6 +170,7 @@ size_t PSArc::LZMADecompress(
     blockNum++;
   }
 
+  dst.resize(totalOutputSize);
   return totalOutputSize;
 }
 
@@ -279,6 +280,10 @@ size_t PSArc::ZLIBDecompress(
         std::cout << "Fatal Error in decompression: Encountered unhandled ZLIB error code (" << status << ")." << std::endl;
         return 0;
       }
+
+      // Shrink dst to the actual decompressed size for this block.
+      totalOutputSize = initialTotalOutputSize + uncompressedSize;
+      dst.resize(totalOutputSize);
     }
     else {
       // This block is not compressed
