@@ -64,4 +64,4 @@ add_custom_command(TARGET psarc-cl POST_BUILD
   COMMENT "Cleaning up stale executable: ${PSARC_CL_STALE_NAME}"
 )
 
-
+install(TARGETS psarc-cl DESTINATION "${CMAKE_INSTALL_BIN_DIR}")
